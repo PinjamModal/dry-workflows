@@ -134,12 +134,31 @@ jobs:
           docker context use ${{ env.SWARM_CONTEXT }}
           echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }})" >> $GITHUB_ENV
 
-      - name: Set Variable in Docker Compose
+      - uses: actions/setup-node@v2
         if: ${{env.STACK == 0}}
-        uses: datamonsters/replace-action@v2
         with:
-          files: ${{ inputs.compose_file }}
-          replacements: '$IMAGE=${{ inputs.docker_image }},$SERVICE_NAME=${{ inputs.service_name }},$SERVICE_NAME_LOGS=${{ inputs.service_name }},$HPORT=${{ inputs.published_port }},$CPORT=${{ inputs.target_port }},$NODE_ENV=${{env.NODE_ENV}}'
+          node-version: '12'
+
+      - run: npm install -g mustache
+
+      - name: Set template variable
+        if: ${{env.STACK == 0}}
+        run: |-
+          cat<<EOT >> deployment/templates/config.json
+          {
+            "service_name": "${{ env.SERVICE_NAME }}",
+            "image": "${{ env.DOCKER_IMAGE }}",
+            "node_env": "${{ env.NODE_ENV }}",
+            "target_port": "${{ env.TARGET_PORT }}",
+            "published_port": "${{ env.PUBLISHED_PORT }}"
+          }
+          EOT
+
+      - name: Set Variable in Compose
+        if: ${{env.STACK == 0}}
+        run: |- 
+          rm deployment/dev-stack.yml
+          mustache deployment/templates/config.json deployment/templates/dev-stack.mustache > deployment/dev-stack.yml
 
       - name: Stack deploy
         if: ${{env.STACK == 0}}
