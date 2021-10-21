@@ -140,6 +140,7 @@ jobs:
           node-version: '12'
 
       - run: npm install -g mustache
+        if: ${{env.STACK == 0}}
 
       - name: Set template variable
         if: ${{env.STACK == 0}}
