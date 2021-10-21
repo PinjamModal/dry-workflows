@@ -147,11 +147,11 @@ jobs:
         run: |-
           cat<<EOT >> deployment/templates/config.json
           {
-            "service_name": "${{ env.SERVICE_NAME }}",
-            "image": "${{ env.DOCKER_IMAGE }}",
+            "service_name": "${{ inputs.service_name }}",
+            "image": "${{ inputs.docker_image }}",
             "node_env": "${{ env.NODE_ENV }}",
-            "target_port": "${{ env.TARGET_PORT }}",
-            "published_port": "${{ env.PUBLISHED_PORT }}"
+            "target_port": "${{ inputs.target_port }}",
+            "published_port": "${{ inputs.published_port }}"
           }
           EOT
 
