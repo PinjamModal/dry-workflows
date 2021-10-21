@@ -158,7 +158,7 @@ jobs:
       - name: Set Variable in Compose
         if: ${{env.STACK == 0}}
         run: |- 
-          rm deployment/dev-stack.yml
+          rm deployment/dev-stack.yml || true
           mustache deployment/templates/config.json deployment/templates/dev-stack.mustache > deployment/dev-stack.yml
 
       - name: Stack deploy
