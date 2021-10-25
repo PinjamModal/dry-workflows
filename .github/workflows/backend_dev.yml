@@ -172,7 +172,7 @@ jobs:
         if: ${{env.STACK == 1}}
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --with-registry-auth --image ${{ inputs.docker_image }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ inputs.docker_image }} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
