@@ -132,7 +132,7 @@ jobs:
       - name: Check stack
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }})[[:space:]]" >> $GITHUB_ENV
+          echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
 
       - uses: actions/setup-node@v2
         if: ${{env.STACK == 0}}
