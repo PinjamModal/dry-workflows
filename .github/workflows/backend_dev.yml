@@ -40,7 +40,7 @@ env:
   SWARM_CONTEXT: PM-DEV-BACKEND
   NODE_ENV: development
   REGISTRY: pinjammodal
-  DOCKER_IMAGE: '${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}'
+  DOCKER_IMAGE: ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
 
 jobs:
 
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
-
+      - run: echo ${env.DOCKER_IMAGE}
       - run: docker context use default
 
       - name: Run Snyk to check for vulnerabilities
