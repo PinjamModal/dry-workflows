@@ -40,6 +40,7 @@ env:
   SWARM_CONTEXT: PM-DEV-BACKEND
   NODE_ENV: development
   REGISTRY: pinjammodal
+  DOCKER_IMAGE: '${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}'
 
 jobs:
 
@@ -77,13 +78,13 @@ jobs:
         run: |-
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@v3
+      #   with:
+      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
 
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - name: Build Docker
         run: |-
@@ -116,13 +117,13 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@v3
+      #   with:
+      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
 
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - run: docker context use default
 
@@ -144,13 +145,13 @@ jobs:
       - name: Docker login
         run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@v3
+      #   with:
+      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
 
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - name: Check stack
         run: |-
