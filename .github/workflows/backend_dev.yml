@@ -40,7 +40,6 @@ env:
   SWARM_CONTEXT: PM-DEV-BACKEND
   NODE_ENV: development
   REGISTRY: pinjammodal
-  DOCKER_IMAGE: ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
 
 jobs:
 
@@ -49,7 +48,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
-      - run: echo ${env.DOCKER_IMAGE}
+      - run: echo ${GITHUB_REF#refs/*/}
       - run: docker context use default
 
       - name: Run Snyk to check for vulnerabilities
@@ -92,7 +91,7 @@ jobs:
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.tsc_base_image }}
           docker pull ${{ inputs.node_base_image }}
-          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
+          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/} .
           docker images
 
       - name: Push Docker Image to Container Registry
@@ -104,8 +103,8 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ env.DOCKER_IMAGE }}
-          docker trust inspect --pretty ${{ env.DOCKER_IMAGE }}
+          docker trust sign ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
+          docker trust inspect --pretty ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
 
       - name: Logout from Container Registry
         run: |-
@@ -133,7 +132,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ env.DOCKER_IMAGE }}
+          image: ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
 
@@ -172,7 +171,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ inputs.service_name }}",
-            "image": "${{ env.DOCKER_IMAGE }}",
+            "image": "${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}",
             "node_env": "${{ env.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
@@ -196,7 +195,7 @@ jobs:
         if: ${{env.STACK == 1}}
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.DOCKER_IMAGE }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
