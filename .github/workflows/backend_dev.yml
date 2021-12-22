@@ -82,15 +82,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
 
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
-
       - name: Build Docker
         run: |-
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.tsc_base_image }}
           docker pull ${{ inputs.node_base_image }}
-          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${ env.DOCKER_IMAGE } .
+          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ steps.meta.outputs.tags }} .
           docker images
 
       - name: Push Docker Image to Container Registry
@@ -102,8 +100,8 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${ env.DOCKER_IMAGE }
-          docker trust inspect --pretty ${ env.DOCKER_IMAGE }
+          docker trust sign ${{ steps.meta.outputs.tags }}
+          docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
 
       - name: Logout from Container Registry
         run: |-
@@ -121,7 +119,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
 
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - run: docker context use default
 
@@ -131,7 +128,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${ env.DOCKER_IMAGE }
+          image: ${{ steps.meta.outputs.tags }}
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
 
@@ -148,8 +145,6 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
-
-      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - name: Check stack
         run: |-
@@ -170,7 +165,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ inputs.service_name }}",
-            "image": "${ env.DOCKER_IMAGE }",
+            "image": "${{ steps.meta.outputs.tags }}",
             "node_env": "${{ env.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
@@ -194,7 +189,7 @@ jobs:
         if: ${{env.STACK == 1}}
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${ env.DOCKER_IMAGE } ${{ inputs.service_name }}_${{ inputs.service_name }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ steps.meta.outputs.tags }} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
