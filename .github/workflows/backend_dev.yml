@@ -80,7 +80,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${ inputs.service_name }
+          images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
 
       - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
@@ -119,7 +119,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${ inputs.service_name }
+          images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
 
       - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
@@ -147,7 +147,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${ inputs.service_name }
+          images: ${{ env.REGISTRY }}/${{ inputs.service_name }}
 
       - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
