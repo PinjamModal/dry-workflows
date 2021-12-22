@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
-      - run: echo ${GITHUB_REF#refs/*/}
+
       - run: docker context use default
 
       - name: Run Snyk to check for vulnerabilities
@@ -66,7 +66,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
+      - run: echo ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
