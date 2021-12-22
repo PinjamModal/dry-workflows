@@ -39,8 +39,8 @@ on:
 env:
   SWARM_CONTEXT: PM-DEV-BACKEND
   NODE_ENV: development
-  REGISTRY: pinjammodal
-  DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  # REGISTRY: pinjammodal
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
 
 jobs:
 
