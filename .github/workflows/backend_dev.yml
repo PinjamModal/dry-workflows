@@ -66,7 +66,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - run: echo ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
@@ -77,13 +76,13 @@ jobs:
         run: |-
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      # - name: Extract metadata (tags, labels) for Docker
-      #   id: meta
-      #   uses: docker/metadata-action@v3
-      #   with:
-      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${ inputs.service_name }
 
-      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - name: Build Docker
         run: |-
@@ -91,7 +90,7 @@ jobs:
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.tsc_base_image }}
           docker pull ${{ inputs.node_base_image }}
-          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/} .
+          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${ env.DOCKER_IMAGE } .
           docker images
 
       - name: Push Docker Image to Container Registry
@@ -103,8 +102,8 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
-          docker trust inspect --pretty ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
+          docker trust sign ${ env.DOCKER_IMAGE }
+          docker trust inspect --pretty ${ env.DOCKER_IMAGE }
 
       - name: Logout from Container Registry
         run: |-
@@ -116,13 +115,13 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
-      # - name: Extract metadata (tags, labels) for Docker
-      #   id: meta
-      #   uses: docker/metadata-action@v3
-      #   with:
-      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${ inputs.service_name }
 
-      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - run: docker context use default
 
@@ -132,7 +131,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}
+          image: ${ env.DOCKER_IMAGE }
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
 
@@ -144,13 +143,13 @@ jobs:
       - name: Docker login
         run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      # - name: Extract metadata (tags, labels) for Docker
-      #   id: meta
-      #   uses: docker/metadata-action@v3
-      #   with:
-      #     images: ${{ env.REGISTRY }}/${{ github.repository }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${ inputs.service_name }
 
-      # - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+      - run: echo "DOCKER_IMAGE=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
 
       - name: Check stack
         run: |-
@@ -171,7 +170,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ inputs.service_name }}",
-            "image": "${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/}",
+            "image": "${ env.DOCKER_IMAGE }",
             "node_env": "${{ env.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
@@ -195,7 +194,7 @@ jobs:
         if: ${{env.STACK == 1}}
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${ env.REGISTRY }/${ inputs.service_name }:${GITHUB_REF#refs/*/} ${{ inputs.service_name }}_${{ inputs.service_name }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${ env.DOCKER_IMAGE } ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
