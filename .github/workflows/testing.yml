@@ -56,7 +56,7 @@ jobs:
 
         ref="${github_ref////-}"
         echo $ref
-        echo "::set-env name=ref::$ref"
+        # echo "::set-env name=ref::$ref"
       env:
         github_ref: ${{ github.ref }}
 
