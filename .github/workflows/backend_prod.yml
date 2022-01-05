@@ -40,16 +40,34 @@ env:
   SWARM_CONTEXT: PM-PROD-BACKEND
   NODE_ENV: production
   DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE_DEV: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs//-prod/}-dev
 
 jobs:
 
-  container-scan:
-    runs-on: [self-hosted]
+  # set-dev-tag:
+  #   runs-on: [self-hosted]
+  #   steps:
 
+  #   - uses: actions/checkout@v1
+
+  #   - run: |
+  #       ref="${github_ref////-}"
+  #       echo $ref
+  #       echo "::set-env name=ref::$ref"
+
+  #     env:
+  #       github_ref: ${{ github.ref }}
+    # - name: Build and tag image
+    #   run: docker build -t " fameintel/booking:$ref" -f Dockerfile .
+
+  container-scan:
+    # needs: set-dev-tag
+    runs-on: [self-hosted]
+    
     steps:
       - run: docker context use default
 
-      - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+      # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
 
       - name: Run Snyk to check Docker image for vulnerabilities
         # continue-on-error: true
@@ -85,7 +103,7 @@ jobs:
       #     docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
       #     docker images
 
-      - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+      # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
 
       - name: Tag Dev Image to Prod
         run: docker tag ${{ env.DOCKER_IMAGE_DEV }} ${{ env.DOCKER_IMAGE }}
@@ -109,7 +127,7 @@ jobs:
           rm ${{secrets.signer_key}}
 
   swarm-deploy:
-    needs: container-scan
+    needs: promote-image
     runs-on: [self-hosted]
 
     steps:
