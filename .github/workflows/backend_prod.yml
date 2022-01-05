@@ -67,6 +67,8 @@ jobs:
     steps:
       - run: docker context use default
 
+      - run: echo ${{env.DOCKER_IMAGE}}
+      - run: echo ${{env.DOCKER_IMAGE_DEV}}
       - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
 
       - name: Run Snyk to check Docker image for vulnerabilities
