@@ -1,0 +1,48 @@
+name: testing
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: 'Name of backend service'
+        required: true
+        type: string
+
+env:
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE_DEV: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*//-prod/}
+  DOCKER_IMAGE_DEV1: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*//-prod}
+  DOCKER_IMAGE_DEV2: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs}
+  DOCKER_IMAGE_DEV3: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/}
+
+jobs:
+
+  set-dev-tag:
+    runs-on: [self-hosted]
+    steps:
+
+    - uses: actions/checkout@v1
+
+    - run: echo "${github_ref/}"
+    - run: |
+
+        ref="${github_ref////-}"
+        echo $ref
+        echo "::set-env name=ref::$ref"
+      env:
+        github_ref: ${{ github.ref }}
+
+    - name: Build and tag image
+      run: echo " fameintel/booking:$ref"
+
+  container-scan:
+    needs: set-dev-tag
+    runs-on: [self-hosted]
+    
+    steps:
+      - run: echo ${{env.DOCKER_IMAGE}}
+      - run: echo ${{env.DOCKER_IMAGE_DEV}}
+      - run: echo ${{env.DOCKER_IMAGE_DEV1}}
+      - run: echo ${{env.DOCKER_IMAGE_DEV2}}
+      - run: echo ${{env.DOCKER_IMAGE_DEV3}}
+      - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
