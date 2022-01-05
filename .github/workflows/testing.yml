@@ -63,12 +63,12 @@ jobs:
     - name: Build and tag image
       run: echo " fameintel/booking:$ref"
 
-      - run: echo ${{env.DOCKER_IMAGE}}
-      - run: echo ${{env.DOCKER_IMAGE_DEV}}
-      - run: echo ${{env.DOCKER_IMAGE_DEV1}}
-      - run: echo ${{env.DOCKER_IMAGE_DEV2}}
-      - run: echo ${{env.DOCKER_IMAGE_DEV3}}
-      - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
+    - run: echo ${{env.DOCKER_IMAGE}}
+    - run: echo ${{env.DOCKER_IMAGE_DEV}}
+    - run: echo ${{env.DOCKER_IMAGE_DEV1}}
+    - run: echo ${{env.DOCKER_IMAGE_DEV2}}
+    - run: echo ${{env.DOCKER_IMAGE_DEV3}}
+    - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
 
-      - run: echo "DOCKER_IMAGE_DEVEL=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
-      - run: echo "DOCKER_IMAGE_DEVEL1=${{$DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+    - run: echo "DOCKER_IMAGE_DEVEL=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+    - run: echo "DOCKER_IMAGE_DEVEL1=${{$DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
