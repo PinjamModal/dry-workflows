@@ -40,7 +40,6 @@ env:
   SWARM_CONTEXT: PM-PROD-BACKEND
   NODE_ENV: production
   DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
-  DOCKER_IMAGE_DEV: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/-prod/}
 
 jobs:
 
@@ -61,23 +60,25 @@ jobs:
     #   run: docker build -t " fameintel/booking:$ref" -f Dockerfile .
 
   container-scan:
-    # needs: set-dev-tag
     runs-on: [self-hosted]
     
     steps:
       - run: docker context use default
 
-      - run: echo ${{env.DOCKER_IMAGE}}
-      - run: echo ${{env.DOCKER_IMAGE_DEV}}
-      - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
+      - name: Docker Dev Image
+        id: docker_image_dev
+        uses: gradity/action-replace-string@v1.1
+        with:
+          text: ${{ env.DOCKER_IMAGE }}
+          find: 'prod'
+          replace: 'dev'
 
       - name: Run Snyk to check Docker image for vulnerabilities
-        # continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ env.DOCKER_IMAGE_DEV }}
+          image: ${{ steps.docker_image_dev.outputs.result }}
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
 
@@ -90,26 +91,30 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
       - name: Login to Container Registry
         run: |-
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      # - name: Build Docker
-      #   run: |-
-      #     docker pull ${{ inputs.tsc_base_image }}
-      #     docker pull ${{ inputs.node_base_image }}
-      #     docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
-      #     docker images
+      - name: Docker Dev Image
+        id: docker_image_dev
+        uses: gradity/action-replace-string@v1.1
+        with:
+          text: ${{ env.DOCKER_IMAGE }}
+          find: 'prod'
+          replace: 'dev'
+
+      - name: Tag Image
+        run: |-
+          docker context use default
+          docker pull ${{ steps.docker_image_dev.outputs.result }}
+          docker tag ${{ env.DOCKER_IMAGE_DEV }} ${{ env.DOCKER_IMAGE }}
+          docker images
 
       # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
-
-      - name: Tag Dev Image to Prod
-        run: docker tag ${{ env.DOCKER_IMAGE_DEV }} ${{ env.DOCKER_IMAGE }}
-
 
       - name: Push Docker Image to Container Registry
         run: |-
