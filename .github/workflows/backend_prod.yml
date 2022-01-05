@@ -73,6 +73,8 @@ jobs:
           find: 'prod'
           replace: 'dev'
 
+      - run: echo ${{ steps.docker_image_dev.outputs.result }}
+
       - name: Run Snyk to check Docker image for vulnerabilities
         uses: snyk/actions/docker@master
         env:
