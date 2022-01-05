@@ -71,4 +71,4 @@ jobs:
     - run: echo ${GITHUB_REF#refs/*/-prod/-dev}
 
     - run: echo "DOCKER_IMAGE_DEVEL=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
-    - run: echo "DOCKER_IMAGE_DEVEL1=${{$DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+    
