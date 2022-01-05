@@ -7,6 +7,34 @@ on:
         description: 'Name of backend service'
         required: true
         type: string
+      published_port:
+        required: true
+        type: number
+      target_port:
+        required: true
+        type: number
+      # tsc_base_image:
+      #   required: true
+      #   type: string
+      # node_base_image:
+      #   required: true
+      #   type: string
+      compose_file:
+        required: true
+        type: string
+    secrets:
+      cr_username:
+        required: true
+      cr_token:
+        required: true
+      signer_key:
+        required: true
+      dct_signer_priv_key:
+        required: true
+      signer_pass:
+        required: true
+      snyk_token:
+        required: true
 
 env:
   DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
