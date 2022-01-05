@@ -40,7 +40,7 @@ env:
   SWARM_CONTEXT: PM-PROD-BACKEND
   NODE_ENV: production
   DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
-  DOCKER_IMAGE_DEV: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/-prod/-dev}
+  DOCKER_IMAGE_DEV: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/-prod/}
 
 jobs:
 
