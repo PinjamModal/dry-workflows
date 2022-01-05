@@ -67,7 +67,7 @@ jobs:
 
       - name: Docker Dev Image
         id: docker_image_dev
-        uses: gradity/action-replace-string@v1.1
+        uses: gradity/action-replace-string@v1.0
         with:
           text: ${{ env.DOCKER_IMAGE }}
           find: 'prod'
