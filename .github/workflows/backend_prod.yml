@@ -39,7 +39,7 @@ on:
 env:
   SWARM_CONTEXT: PM-PROD-BACKEND
   NODE_ENV: production
-  DOCKER_IMAGE_PROD: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  PROD_IMAGE_TAG: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
   DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}
   TAG: ${GITHUB_REF#refs/*/}
 
@@ -57,15 +57,17 @@ jobs:
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
       - name: Set Image Tag Env Variable
-        run: echo "DOCKER_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
       - name: Docker Dev Image
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.0
         with:
-          text: ${{ env.DOCKER_IMAGE_TAG }}
+          text: ${{ env.DEV_IMAGE_TAG }}
           find: 'prod'
           replace: 'dev'
+
+      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
 
       - run: echo ${{ steps.docker_image_dev.outputs.result }}
 
@@ -96,21 +98,23 @@ jobs:
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
       - name: Set Image Tag Env Variable
-        run: echo "DOCKER_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
       - name: Docker Dev Image
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.0
         with:
-          text: ${{ env.DOCKER_IMAGE_TAG }}
+          text: ${{ env.DEV_IMAGE_TAG }}
           find: 'prod'
           replace: 'dev'
+
+      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
 
       - name: Tag Image
         run: |-
           docker context use default
           docker pull ${{ steps.docker_image_dev.outputs.result }}
-          docker tag ${{ steps.docker_image_dev.outputs.result }} ${{ env.DOCKER_IMAGE_PROD }}
+          docker tag ${{ steps.docker_image_dev.outputs.result }} ${{ env.PROD_IMAGE_TAG }}
           docker images
 
       # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
@@ -124,8 +128,8 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ env.DOCKER_IMAGE_PROD }}
-          docker trust inspect --pretty ${{ env.DOCKER_IMAGE_PROD }}
+          docker trust sign ${{ env.PROD_IMAGE_TAG }}
+          docker trust inspect --pretty ${{ env.PROD_IMAGE_TAG }}
 
       - name: Logout from Container Registry
         run: |-
@@ -159,7 +163,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ inputs.service_name }}",
-            "image": "${{ env.DOCKER_IMAGE_PROD }}",
+            "image": "${{ env.PROD_IMAGE_TAG }}",
             "node_env": "${{ env.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
