@@ -51,6 +51,11 @@ jobs:
     steps:
       - run: docker context use default
 
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
       - name: Set Image Tag Env Variable
         run: echo "DOCKER_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
