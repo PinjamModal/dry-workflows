@@ -39,7 +39,9 @@ on:
 env:
   SWARM_CONTEXT: PM-PROD-BACKEND
   NODE_ENV: production
-  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE_PROD: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}
+  TAG: ${GITHUB_REF#refs/*/}
 
 jobs:
 
@@ -69,7 +71,7 @@ jobs:
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.0
         with:
-          text: ${{ env.DOCKER_IMAGE }}
+          text: ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           find: 'prod'
           replace: 'dev'
 
@@ -105,7 +107,7 @@ jobs:
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.1
         with:
-          text: ${{ env.DOCKER_IMAGE }}
+          text: ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           find: 'prod'
           replace: 'dev'
 
@@ -113,7 +115,7 @@ jobs:
         run: |-
           docker context use default
           docker pull ${{ steps.docker_image_dev.outputs.result }}
-          docker tag ${{ env.DOCKER_IMAGE_DEV }} ${{ env.DOCKER_IMAGE }}
+          docker tag ${{ steps.docker_image_dev.outputs.result }} ${{ env.DOCKER_IMAGE_PROD }}
           docker images
 
       # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
@@ -127,8 +129,8 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ env.DOCKER_IMAGE }}
-          docker trust inspect --pretty ${{ env.DOCKER_IMAGE }}
+          docker trust sign ${{ env.DOCKER_IMAGE_PROD }}
+          docker trust inspect --pretty ${{ env.DOCKER_IMAGE_PROD }}
 
       - name: Logout from Container Registry
         run: |-
@@ -162,7 +164,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ inputs.service_name }}",
-            "image": "${{ env.DOCKER_IMAGE }}",
+            "image": "${{ env.DOCKER_IMAGE_PROD }}",
             "node_env": "${{ env.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
@@ -172,8 +174,8 @@ jobs:
       - name: Set Variable in Compose
         if: ${{env.STACK == 0}}
         run: |- 
-          rm deployment/dev-stack.yml || true
-          mustache deployment/templates/config.json deployment/templates/dev-stack.mustache > deployment/dev-stack.yml
+          rm ${{ inputs.compose_file }} || true
+          mustache deployment/templates/config.json deployment/templates/prod-stack.mustache > ${{ inputs.compose_file }}
 
       - name: Stack deploy
         if: ${{env.STACK == 0}}
