@@ -56,10 +56,10 @@ jobs:
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - name: Set Image Tag Env Variable
+      - name: Set Prod Image Tag to Env Variable
         run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
-      - name: Docker Dev Image
+      - name: Set Dev Image Tag
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.0
         with:
@@ -97,10 +97,10 @@ jobs:
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - name: Set Image Tag Env Variable
+      - name: Set Prod Image Tag to Env Variables
         run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
-      - name: Docker Dev Image
+      - name: Set Dev Image Tag
         id: docker_image_dev
         uses: gradity/action-replace-string@v1.0
         with:
@@ -187,7 +187,7 @@ jobs:
         if: ${{env.STACK == 1}}
         run: |-
           docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.DOCKER_IMAGE }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.PROD_IMAGE_TAG }} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
