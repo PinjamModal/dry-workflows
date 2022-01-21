@@ -10,6 +10,9 @@ on:
       published_port:
         required: true
         type: number
+      node_base_image:
+        required: true
+        type: string
       compose_file:
         required: true
         type: string
