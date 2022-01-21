@@ -33,8 +33,9 @@ on:
 env:
   SWARM_CONTEXT: PM-DEV-FRONTEND
   NODE_ENV: development
-  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
-
+  # DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:$GITHUB_SHA
+  
 jobs:
 
   code-scan:
