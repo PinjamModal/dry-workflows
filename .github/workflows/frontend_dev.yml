@@ -1,0 +1,183 @@
+name: Deploy Frontend Service to Dev
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: 'Name of web app'
+        required: true
+        type: string
+      published_port:
+        required: true
+        type: number
+      compose_file:
+        required: true
+        type: string
+    secrets:
+      cr_username:
+        required: true
+      cr_token:
+        required: true
+      signer_key:
+        required: true
+      dct_signer_priv_key:
+        required: true
+      signer_pass:
+        required: true
+      snyk_token:
+        required: true
+
+env:
+  SWARM_CONTEXT: PM-DEV-FRONTEND
+  NODE_ENV: development
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+
+jobs:
+
+  code-scan:
+    runs-on: [self-hosted]
+
+    steps:
+      - uses: actions/checkout@master
+
+      - run: docker context use default
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          args: --severity-threshold=high
+          command: test
+      # - name: Upload result to GitHub Code Scanning
+      #   uses: github/codeql-action/upload-sarif@v1
+      #   with:
+      #     sarif_file: snyk.sarif
+
+  build:
+    needs: code-scan
+    runs-on: [self-hosted]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Container Registry
+        run: |-
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - name: Build Docker
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+          docker pull ${{ inputs.node_base_image }}
+          docker build --build-arg --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
+          docker images
+
+      - name: Push Docker Image to Container Registry
+        run: |-
+          export DOCKER_CONTENT_TRUST=1
+          cat <<EOT >> ${{secrets.signer_key}}
+          ${{ secrets.dct_signer_priv_key }}
+          EOT
+          chmod 600 ${{secrets.signer_key}}
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
+          docker trust key load ${{ secrets.signer_key }}
+          docker trust sign ${{ env.DOCKER_IMAGE }}
+          docker trust inspect --pretty ${{ env.DOCKER_IMAGE }}
+
+      - name: Logout from Container Registry
+        run: |-
+          docker logout
+          rm ${{secrets.signer_key}}
+
+  container-scan:
+    needs: build
+    runs-on: [self-hosted]
+
+    steps:
+      - run: docker context use default
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ env.DOCKER_IMAGE }}
+          args: --file=Dockerfile
+          command: test
+      # - name: Upload result to GitHub Code Scanning
+      #   uses: github/codeql-action/upload-sarif@v1
+      #   with:
+      #     sarif_file: snyk.sarif
+
+  swarm-deploy:
+    needs: container-scan
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Docker login
+        run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - name: Check stack
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
+
+      - uses: actions/setup-node@v2
+        if: ${{env.STACK == 0}}
+        with:
+          node-version: '12'
+
+      - run: npm install -g mustache
+        if: ${{env.STACK == 0}}
+
+      - name: Set template variable
+        if: ${{env.STACK == 0}}
+        run: |-
+          cat<<EOT >> deployment/templates/config.json
+          {
+            "service_name": "${{ inputs.service_name }}",
+            "image": "${{ env.DOCKER_IMAGE }}",
+            "node_env": "${{ env.NODE_ENV }}",
+            "target_port": "3000",
+            "published_port": "${{ inputs.published_port }}"
+          }
+          EOT
+
+      - name: Set Variable in Compose
+        if: ${{env.STACK == 0}}
+        run: |- 
+          rm ${{ inputs.compose_file }} || true
+          mustache deployment/templates/config.json deployment/templates/dev-stack.mustache > ${{ inputs.compose_file }}
+
+      - name: Stack deploy
+        if: ${{env.STACK == 0}}
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          docker network create -d overlay --attachable public || true
+          docker stack deploy --resolve-image=always --with-registry-auth --compose-file ${{ inputs.compose_file }} ${{ inputs.service_name }}
+
+      - name: Update current service
+        if: ${{env.STACK == 1}}
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.DOCKER_IMAGE }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+
+  runner-cleanup:
+    needs: [swarm-deploy]
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Prune Images
+        run: |-
+          docker context use default
+          docker image prune -a -f
+          docker rmi -f $(docker images -f "dangling=true" -q) || true
+          docker images
