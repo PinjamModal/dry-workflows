@@ -79,7 +79,7 @@ jobs:
       - name: Build Docker
         run: |-
           docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+          # docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.tsc_base_image }}
           docker pull ${{ inputs.node_base_image }}
           docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
@@ -109,13 +109,20 @@ jobs:
     steps:
       - run: docker context use default
 
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - run: docker pull pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+
       - name: Run Snyk to check Docker image for vulnerabilities
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ env.DOCKER_IMAGE }}
+          image: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
 

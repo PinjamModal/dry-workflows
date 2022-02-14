@@ -78,7 +78,7 @@ jobs:
       - name: Build Docker
         run: |-
           docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+          # docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.node_base_image }}
           docker build --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
           docker images
