@@ -13,12 +13,14 @@ on:
       target_port:
         required: true
         type: number
-      # tsc_base_image:
-      #   required: true
-      #   type: string
-      # node_base_image:
-      #   required: true
-      #   type: string
+      tsc_base_image:
+        required: false
+        type: string
+        default: 'pinjammodal/typescript:3.9.10'
+      node_base_image:
+        required: false
+        type: string
+        default: 'pinjammodal/node:12.22.9-3.14'
       compose_file:
         required: true
         type: string
@@ -45,43 +47,35 @@ env:
 
 jobs:
 
-  container-scan:
+  check-branch:
+    if: github.event.base_ref != 'refs/heads/production'
     runs-on: [self-hosted]
-    
+
     steps:
+      - run: echo "::error title=Invalid branch::Branch is not production"
+
+  code-scan:
+    if: github.event.base_ref == 'refs/heads/production'
+    needs: check-branch
+    runs-on: [self-hosted]
+
+    steps:
+      - uses: actions/checkout@master
+
       - run: docker context use default
 
-      - name: Login to Container Registry
-        run: |-
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
-
-      - name: Set Prod Image Tag to Env Variable
-        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
-
-      - name: Set Dev Image Tag
-        id: docker_image_dev
-        uses: gradity/action-replace-string@v1.0
-        with:
-          text: ${{ env.DEV_IMAGE_TAG }}
-          find: 'prod'
-          replace: 'dev'
-
-      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
-
-      - run: echo ${{ steps.docker_image_dev.outputs.result }}
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        uses: snyk/actions/docker@master
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: false
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ steps.docker_image_dev.outputs.result }}
-          args: --file=Dockerfile --severity-threshold=high
-          command: monitor
+          args: --severity-threshold=high
+          command: test
 
-  promote-image:
-    needs: container-scan
+  build:
+    if: github.event.base_ref == 'refs/heads/production'
+    needs: code-scan
     runs-on: [self-hosted]
 
     steps:
@@ -94,30 +88,15 @@ jobs:
 
       - name: Login to Container Registry
         run: |-
-          docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - name: Set Prod Image Tag to Env Variables
-        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
-
-      - name: Set Dev Image Tag
-        id: docker_image_dev
-        uses: gradity/action-replace-string@v1.0
-        with:
-          text: ${{ env.DEV_IMAGE_TAG }}
-          find: 'prod'
-          replace: 'dev'
-
-      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
-
-      - name: Tag Image
+      - name: Build Docker
         run: |-
           docker context use default
-          docker pull ${{ steps.docker_image_dev.outputs.result }}
-          docker tag ${{ steps.docker_image_dev.outputs.result }} ${{ env.PROD_IMAGE_TAG }}
+          docker pull ${{ inputs.tsc_base_image }}
+          docker pull ${{ inputs.node_base_image }}
+          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.PROD_IMAGE_TAG }} .
           docker images
-
-      # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
 
       - name: Push Docker Image to Container Registry
         run: |-
@@ -136,8 +115,34 @@ jobs:
           docker logout
           rm ${{secrets.signer_key}}
 
+  container-scan:
+    if: github.event.base_ref == 'refs/heads/production'
+    needs: build
+    runs-on: [self-hosted]
+    
+    steps:
+      - run: docker context use default
+
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - run: docker pull ${{ env.PROD_IMAGE_TAG }}
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ env.PROD_IMAGE_TAG }}
+          args: --file=Dockerfile --severity-threshold=high
+          command: test
+
+ 
   swarm-deploy:
-    needs: promote-image
+    if: github.event.base_ref == 'refs/heads/production'
+    needs: container-scan
     runs-on: [self-hosted]
 
     steps:
@@ -190,6 +195,7 @@ jobs:
           docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.PROD_IMAGE_TAG }} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
+    if: github.event.base_ref == 'refs/heads/production'
     needs: [swarm-deploy]
     runs-on: [self-hosted]
 
