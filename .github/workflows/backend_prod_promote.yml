@@ -1,0 +1,202 @@
+name: Deploy Backend Service to Production
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: 'Name of backend service'
+        required: true
+        type: string
+      published_port:
+        required: true
+        type: number
+      target_port:
+        required: true
+        type: number
+      # tsc_base_image:
+      #   required: true
+      #   type: string
+      # node_base_image:
+      #   required: true
+      #   type: string
+      compose_file:
+        required: true
+        type: string
+    secrets:
+      cr_username:
+        required: true
+      cr_token:
+        required: true
+      signer_key:
+        required: true
+      dct_signer_priv_key:
+        required: true
+      signer_pass:
+        required: true
+      snyk_token:
+        required: true
+
+env:
+  SWARM_CONTEXT: PM-PROD-BACKEND
+  NODE_ENV: production
+  PROD_IMAGE_TAG: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}
+  TAG: ${GITHUB_REF#refs/*/}
+
+jobs:
+
+  container-scan:
+    runs-on: [self-hosted]
+    
+    steps:
+      - run: docker context use default
+
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - name: Set Prod Image Tag to Env Variable
+        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+
+      - name: Set Dev Image Tag
+        id: docker_image_dev
+        uses: gradity/action-replace-string@v1.0
+        with:
+          text: ${{ env.DEV_IMAGE_TAG }}
+          find: 'prod'
+          replace: 'dev'
+
+      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
+
+      - run: echo ${{ steps.docker_image_dev.outputs.result }}
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ steps.docker_image_dev.outputs.result }}
+          args: --file=Dockerfile --severity-threshold=high
+          command: monitor
+
+  promote-image:
+    needs: container-scan
+    runs-on: [self-hosted]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - name: Set Prod Image Tag to Env Variables
+        run: echo "DEV_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+
+      - name: Set Dev Image Tag
+        id: docker_image_dev
+        uses: gradity/action-replace-string@v1.0
+        with:
+          text: ${{ env.DEV_IMAGE_TAG }}
+          find: 'prod'
+          replace: 'dev'
+
+      - run: docker pull ${{ steps.docker_image_dev.outputs.result }}
+
+      - name: Tag Image
+        run: |-
+          docker context use default
+          docker pull ${{ steps.docker_image_dev.outputs.result }}
+          docker tag ${{ steps.docker_image_dev.outputs.result }} ${{ env.PROD_IMAGE_TAG }}
+          docker images
+
+      # - run: echo "DOCKER_IMAGE_DEV=${{env.DOCKER_IMAGE//-prod/}}"-dev >> $GITHUB_ENV
+
+      - name: Push Docker Image to Container Registry
+        run: |-
+          export DOCKER_CONTENT_TRUST=1
+          cat <<EOT >> ${{secrets.signer_key}}
+          ${{ secrets.dct_signer_priv_key }}
+          EOT
+          chmod 600 ${{secrets.signer_key}}
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
+          docker trust key load ${{ secrets.signer_key }}
+          docker trust sign ${{ env.PROD_IMAGE_TAG }}
+          docker trust inspect --pretty ${{ env.PROD_IMAGE_TAG }}
+
+      - name: Logout from Container Registry
+        run: |-
+          docker logout
+          rm ${{secrets.signer_key}}
+
+  swarm-deploy:
+    needs: promote-image
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Docker login
+        run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - name: Check stack
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
+
+      - uses: actions/setup-node@v2
+        if: ${{env.STACK == 0}}
+        with:
+          node-version: '12'
+
+      - run: npm install -g mustache
+        if: ${{env.STACK == 0}}
+
+      - name: Set template variable
+        if: ${{env.STACK == 0}}
+        run: |-
+          cat<<EOT >> deployment/templates/config.json
+          {
+            "service_name": "${{ inputs.service_name }}",
+            "image": "${{ env.PROD_IMAGE_TAG }}",
+            "node_env": "${{ env.NODE_ENV }}",
+            "target_port": "${{ inputs.target_port }}",
+            "published_port": "${{ inputs.published_port }}"
+          }
+          EOT
+
+      - name: Set Variable in Compose
+        if: ${{env.STACK == 0}}
+        run: |- 
+          rm ${{ inputs.compose_file }} || true
+          mustache deployment/templates/config.json deployment/templates/prod-stack.mustache > ${{ inputs.compose_file }}
+
+      - name: Stack deploy
+        if: ${{env.STACK == 0}}
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          docker network create -d overlay --attachable public || true
+          docker stack deploy --resolve-image=always --with-registry-auth --compose-file ${{ inputs.compose_file }} ${{ inputs.service_name }}
+
+      - name: Update current service
+        if: ${{env.STACK == 1}}
+        run: |-
+          docker context use ${{ env.SWARM_CONTEXT }}
+          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ env.PROD_IMAGE_TAG }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+
+  runner-cleanup:
+    needs: [swarm-deploy]
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Prune Images
+        run: |-
+          docker context use default
+          docker image prune -a -f
+          docker rmi -f $(docker images -f "dangling=true" -q) || true
+          docker images
