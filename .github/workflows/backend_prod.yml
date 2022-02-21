@@ -129,12 +129,15 @@ jobs:
 
       - run: docker pull ${{ env.PROD_IMAGE_TAG }}
 
+      - name: Set Prod Image Tag to Env Variable
+        run: echo "SCAN_IMAGE_TAG=${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+
       - name: Run Snyk to check Docker image for vulnerabilities
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}
+          image: ${{ env.SCAN_IMAGE_TAG }}
           args: --file=Dockerfile --severity-threshold=high
           command: test
 
