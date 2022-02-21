@@ -134,7 +134,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ env.PROD_IMAGE_TAG }}
+          image: ${{env.DOCKER_IMAGE}}:${GITHUB_REF#refs/*/}
           args: --file=Dockerfile --severity-threshold=high
           command: test
 
