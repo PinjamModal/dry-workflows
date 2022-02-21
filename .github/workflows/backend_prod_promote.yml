@@ -1,4 +1,4 @@
-name: Deploy Backend Service to Production
+name: Promote Development Image to Production
 
 on:
   workflow_call:
