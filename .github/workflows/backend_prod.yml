@@ -56,7 +56,6 @@ jobs:
 
   code-scan:
     if: github.event.base_ref == 'refs/heads/production'
-    needs: check-branch
     runs-on: [self-hosted]
 
     steps:
