@@ -16,6 +16,10 @@ on:
       compose_file:
         required: true
         type: string
+      env_file:
+        description: 'Use to load environment variable from file'
+        required: false
+        type: string
     secrets:
       cr_username:
         required: true
@@ -78,6 +82,7 @@ jobs:
       - name: Build Docker
         run: |-
           docker context use default
+          source ${{ inputs.env_file }}
           # docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.node_base_image }}
           docker build --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
