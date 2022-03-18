@@ -37,8 +37,8 @@ on:
 env:
   SWARM_CONTEXT: PM-DEV-FRONTEND
   NODE_ENV: development
-  # DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
-  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_SHA}
+  DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
+  # DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_SHA}
 
 jobs:
 
@@ -112,13 +112,23 @@ jobs:
     steps:
       - run: docker context use default
 
+      - name: Set Dev Image Tag
+        run: echo "DEV_IMAGE_TAG=pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
+
+      - name: Login to Container Registry
+        run: |-
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - run: docker pull ${{ env.DEV_IMAGE_TAG }}
+
       - name: Run Snyk to check Docker image for vulnerabilities
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ env.DOCKER_IMAGE }}
+          image: ${{ env.DEV_IMAGE_TAG }}
           args: --file=Dockerfile
           command: test
       # - name: Upload result to GitHub Code Scanning
