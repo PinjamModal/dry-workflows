@@ -155,7 +155,7 @@ jobs:
             "service_name": "${{ inputs.service_name }}",
             "image": "${{ env.DOCKER_IMAGE }}",
             "node_env": "${{ env.NODE_ENV }}",
-            "target_port": "3000",
+            "target_port": "8080",
             "published_port": "${{ inputs.published_port }}"
           }
           EOT
