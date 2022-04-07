@@ -44,7 +44,6 @@ env:
 jobs:
 
   build:
-    # needs: code-scan
     runs-on: [self-hosted]
 
     steps:
@@ -86,7 +85,7 @@ jobs:
           rm ${{secrets.signer_key}}
 
   swarm-deploy:
-    needs: container-scan
+    needs: build
     runs-on: [self-hosted]
 
     steps:
