@@ -43,25 +43,8 @@ env:
 
 jobs:
 
-  code-scan:
-    runs-on: [self-hosted]
-
-    steps:
-      - uses: actions/checkout@master
-
-      - run: docker context use default
-
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          args: --severity-threshold=high
-          command: monitor
-
   build:
-    needs: code-scan
+    # needs: code-scan
     runs-on: [self-hosted]
 
     steps:
@@ -101,33 +84,6 @@ jobs:
         run: |-
           docker logout
           rm ${{secrets.signer_key}}
-
-  container-scan:
-    needs: build
-    runs-on: [self-hosted]
-
-    steps:
-      - run: docker context use default
-
-      - name: Set Dev Image Tag
-        run: echo "DEV_IMAGE_TAG=pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
-
-      - name: Login to Container Registry
-        run: |-
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
-
-      - run: docker pull ${{ env.DEV_IMAGE_TAG }}
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          image: ${{ env.DEV_IMAGE_TAG }}
-          args: --file=Dockerfile --severity-threshold=high
-          command: monitor
 
   swarm-deploy:
     needs: container-scan
