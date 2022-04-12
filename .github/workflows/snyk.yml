@@ -9,6 +9,10 @@ on:
     secrets:
       snyk_token:
         required: true
+      cr_username:
+        required: true
+      cr_token:
+        required: true
 
 jobs:
   code-scan:
@@ -43,6 +47,9 @@ jobs:
         uses: gradity/action-json-config@v1.0
         with:
           operation: 'get'
+      
+      - name: Debug Image Tag
+        run: echo ${{ steps.loaded_image_tag.outputs.result }}1
 
       - name: Login to Container Registry
         run: |-
