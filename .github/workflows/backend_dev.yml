@@ -79,6 +79,12 @@ jobs:
           docker trust sign ${{ env.DOCKER_IMAGE }}
           docker trust inspect --pretty ${{ env.DOCKER_IMAGE }}
 
+      - name: Share Image Tag
+        uses: gradity/action-json-config@v1.0
+        with:
+          operation: 'set'
+          image: ${{ env.DOCKER_IMAGE }}
+
       - name: Logout from Container Registry
         run: |-
           docker logout

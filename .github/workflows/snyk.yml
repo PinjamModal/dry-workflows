@@ -38,12 +38,18 @@ jobs:
       # - name: Set Dev Image Tag
       #   run: echo "image_tag=pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}" >> "$GITHUB_ENV"
 
+      - name: Load Image Tag
+        id: loaded_image_tag
+        uses: gradity/action-json-config@v1.0
+        with:
+          operation: 'get'
+
       - name: Login to Container Registry
         run: |-
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - run: docker pull ${{ inputs.image_tag }}
+      - run: docker pull ${{ steps.loaded_image_tag.outputs.result }}
 
       - name: Run Snyk to check Docker image for vulnerabilities
         continue-on-error: true
@@ -51,6 +57,6 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ inputs.image_tag }}
+          image: ${{ steps.loaded_image_tag.outputs.result }}
           args: --file=Dockerfile --severity-threshold=high
           command: monitor
