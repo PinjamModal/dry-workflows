@@ -62,7 +62,6 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: ${{ inputs.service_name }}
-          tags: type=semver,pattern={{raw}}
 
       - run: echo "::notice title=docker meta::${{ steps.meta.outputs.tags }}"
 
