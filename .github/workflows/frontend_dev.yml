@@ -82,7 +82,8 @@ jobs:
       - name: Build Docker
         run: |-
           docker context use default
-          source ${{ inputs.env_file }}
+          if [ -f "${{ inputs.env_file }}" ]; then source ${{ inputs.env_file }}
+          fi
           # docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.node_base_image }}
           docker build --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
