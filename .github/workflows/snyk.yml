@@ -49,7 +49,7 @@ jobs:
           operation: 'get'
       
       - name: Debug Image Tag
-        run: echo ${{ steps.loaded_image_tag.outputs.result }}1
+        run: echo ${{ steps.loaded_image_tag.outputs.result }}
 
       - name: Login to Container Registry
         run: |-

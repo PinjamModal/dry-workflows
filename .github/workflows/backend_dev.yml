@@ -61,7 +61,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ inputs.service_name }}
+          images: pinjammodal/${{ inputs.service_name }}
 
       - run: echo "::notice title=docker meta::${{ steps.meta.outputs.tags }}"
 
