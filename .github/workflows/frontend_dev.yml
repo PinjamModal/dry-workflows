@@ -86,7 +86,7 @@ jobs:
           fi
           # docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
           docker pull ${{ inputs.node_base_image }}
-          docker build --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} .
+          docker build --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.DOCKER_IMAGE }} -m 4g .
           docker images
 
       - name: Push Docker Image to Container Registry
