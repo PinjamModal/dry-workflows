@@ -107,6 +107,9 @@ jobs:
           # docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ steps.meta.outputs.tags }} .
           # docker images
 
+      - name: Debug Build Result
+        run: docker images | grep ${{ steps.meta.outputs.tags }}
+
       - name: Push Docker Image to Container Registry
         run: |-
           export DOCKER_CONTENT_TRUST=1
