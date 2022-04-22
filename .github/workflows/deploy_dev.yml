@@ -1,10 +1,10 @@
-name: Deploy Backend Service to Dev
+name: Deploy Service/Web App to Development
 
 on:
   workflow_call:
     inputs:
       service_name:
-        description: 'Name of backend service'
+        description: 'Name of backend service/web app'
         required: true
         type: string
       published_port:
@@ -13,14 +13,27 @@ on:
       target_port:
         required: true
         type: number
+        default: 3300
       tsc_base_image:
         required: true
         type: string
+        default: 'pinjammodal/typescript:3.9.10'
       node_base_image:
         required: true
         type: string
+        default: 'pinjammodal/node:12.22.9-3.14'
       compose_file:
         required: true
+        type: string
+      docker_context:
+        required: true
+        type: string
+      runner_label:
+        required: true
+        default: [self-hosted]
+      env_file:
+        description: 'Use to load environment variable from file'
+        required: false
         type: string
     secrets:
       cr_username:
@@ -33,18 +46,14 @@ on:
         required: true
       signer_pass:
         required: true
-      snyk_token:
-        required: true
 
 env:
-  SWARM_CONTEXT: PM-DEV-BACKEND
   NODE_ENV: development
-  # DOCKER_IMAGE: pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}
 
 jobs:
 
   build:
-    runs-on: [self-hosted]
+    runs-on: ${{ inputs.runner_label }}
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
@@ -59,11 +68,18 @@ jobs:
 
       - name: Docker Meta
         id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: pinjammodal/${{ inputs.service_name }}
+        run: echo "::set-output name=tags::pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}" 
+
+      # - name: Docker Meta
+      #   id: meta
+      #   uses: docker/metadata-action@v3
+      #   with:
+      #     images: pinjammodal/${{ inputs.service_name }}
 
       - run: echo "::notice title=docker meta::${{ steps.meta.outputs.tags }}"
+
+      - name: Set Context Default
+        run: docker context use default
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1.14.1
@@ -71,13 +87,28 @@ jobs:
           username: ${{ secrets.cr_username }} 
           password: ${{ secrets.cr_token }}
 
+      - name: Load Environment Variable
+        if: inputs.env_file != ''
+        run: source ${{ inputs.env_file }}
+
       - name: Build Docker
-        run: |-
-          docker context use default
-          docker pull ${{ inputs.tsc_base_image }}
-          docker pull ${{ inputs.node_base_image }}
-          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ steps.meta.outputs.tags }} .
-          docker images
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            TARGET_PORT=${{ inputs.target_port }}
+            TSC_BASE=${{ inputs.tsc_base_image }}
+            NODE_BASE=${{ inputs.node_base_image }}
+
+        # run: |-
+          # if [ -f "${{ inputs.env_file }}" ]; then source ${{ inputs.env_file }}
+          # fi
+          # docker pull ${{ inputs.tsc_base_image }}
+          # docker pull ${{ inputs.node_base_image }}
+          # docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ steps.meta.outputs.tags }} .
+          # docker images
 
       - name: Push Docker Image to Container Registry
         run: |-
@@ -91,12 +122,6 @@ jobs:
           docker trust sign ${{ steps.meta.outputs.tags }}
           docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
 
-      # - name: Share Image Tag
-      #   uses: gradity/action-json-config@v1.0
-      #   with:
-      #     operation: 'set'
-      #     image: ${{ env.DOCKER_IMAGE }}
-
       - name: Logout from Container Registry
         run: |-
           docker logout
@@ -104,7 +129,7 @@ jobs:
 
   swarm-deploy:
     needs: build
-    runs-on: [self-hosted]
+    runs-on: ${{ inputs.runner_label }}
 
     steps:
       - name: Login to Docker Hub
@@ -112,22 +137,23 @@ jobs:
         with:
           username: ${{ secrets.cr_username }} 
           password: ${{ secrets.cr_token }}
+      
+      - name: Set Context
+        run: docker context use ${{ inputs.docker_context }}
 
       - name: Check stack
-        run: |-
-          docker context use ${{ env.SWARM_CONTEXT }}
-          echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
+        run: echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
 
       - uses: actions/setup-node@v2
-        if: ${{env.STACK == 0}}
+        if: env.STACK == 0
         with:
           node-version: '12'
 
       - run: npm install -g mustache
-        if: ${{env.STACK == 0}}
+        if: env.STACK == 0
 
       - name: Set template variable
-        if: ${{env.STACK == 0}}
+        if: env.STACK == 0
         run: |-
           cat<<EOT >> deployment/templates/config.json
           {
@@ -140,27 +166,24 @@ jobs:
           EOT
 
       - name: Set Variable in Compose
-        if: ${{env.STACK == 0}}
+        if: env.STACK == 0
         run: |- 
           rm ${{ inputs.compose_file }} || true
           mustache deployment/templates/config.json deployment/templates/dev-stack.mustache > ${{ inputs.compose_file }}
 
       - name: Stack deploy
-        if: ${{env.STACK == 0}}
+        if: env.STACK == 0
         run: |-
-          docker context use ${{ env.SWARM_CONTEXT }}
           docker network create -d overlay --attachable public || true
           docker stack deploy --resolve-image=always --with-registry-auth --compose-file ${{ inputs.compose_file }} ${{ inputs.service_name }}
 
       - name: Update current service
-        if: ${{env.STACK == 1}}
-        run: |-
-          docker context use ${{ env.SWARM_CONTEXT }}
-          docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.build.outputs.imageTag }} ${{ inputs.service_name }}_${{ inputs.service_name }}
+        if: env.STACK == 1
+        run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.build.outputs.imageTag }} ${{ inputs.service_name }}_${{ inputs.service_name }}
 
   runner-cleanup:
     needs: [swarm-deploy]
-    runs-on: [self-hosted]
+    runs-on: ${{ inputs.runner_label }}
 
     steps:
       - name: Prune Images
