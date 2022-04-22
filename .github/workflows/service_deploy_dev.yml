@@ -68,12 +68,6 @@ jobs:
         id: meta
         run: echo "::set-output name=tags::pinjammodal/${{ inputs.service_name }}:${GITHUB_REF#refs/*/}" 
 
-      # - name: Docker Meta
-      #   id: meta
-      #   uses: docker/metadata-action@v3
-      #   with:
-      #     images: pinjammodal/${{ inputs.service_name }}
-
       - run: echo "::notice title=docker meta::${{ steps.meta.outputs.tags }}"
 
       - name: Set Context Default
@@ -101,9 +95,7 @@ jobs:
             NODE_BASE=${{ inputs.node_base_image }}
 
       - name: Check Build Result
-        run: | 
-          docker images
-          echo "::debug::this is debug message"
+        run: docker images
 
       - name: Push Docker Image to Container Registry
         run: |-
@@ -160,16 +152,14 @@ jobs:
 
       - name: Set Variable in Compose
         if: env.STACK == 0
-        run: |
-          rm ${{ inputs.compose_file }} || true
-          mustache deployment/templates/config.json deployment/templates/${{ inputs.compose_file }}.mustache > deployment/${{ inputs.compose_file }}.yml
+        run: mustache deployment/templates/config.json deployment/templates/${{ inputs.compose_file }}.mustache > deployment/${{ inputs.compose_file }}.yml
 
       - name: Check Service Network
         if: env.STACK == 0
         id: network
         run: |
           docker network ls > tmp
-          if grep -wq public tmp; then echo "::notice title=network exist" ; else echo "::set-output name=create::true"; fi
+          if grep -wq public tmp; then echo "::notice title=network exist::public network already exist" ; else echo "::set-output name=create::true"; fi
 
       - name: Create Service Network
         if: steps.network.outputs.create
