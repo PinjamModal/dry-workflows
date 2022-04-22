@@ -15,11 +15,11 @@ on:
         type: number
         default: 3300
       tsc_base_image:
-        required: true
+        required: false
         type: string
         default: 'pinjammodal/typescript:3.9.10'
       node_base_image:
-        required: true
+        required: false
         type: string
         default: 'pinjammodal/node:12.22.9-3.14'
       compose_file:
