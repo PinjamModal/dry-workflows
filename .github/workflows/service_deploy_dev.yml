@@ -169,7 +169,7 @@ jobs:
         id: network
         run: |
           docker network ls > tmp
-          if grep -wq public tmp; then echo "::set-output name=create::true""; fi
+          if grep -wq public tmp; then echo "::set-output name=create::true"; fi
 
       - run: echo ${{ steps.network.outputs.create }}
 
