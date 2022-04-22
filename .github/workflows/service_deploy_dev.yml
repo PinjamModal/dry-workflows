@@ -11,7 +11,7 @@ on:
         required: true
         type: number
       target_port:
-        required: true
+        required: false
         type: number
         default: 3300
       tsc_base_image:
