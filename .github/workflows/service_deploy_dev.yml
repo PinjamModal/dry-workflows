@@ -98,7 +98,7 @@ jobs:
         run: docker images
 
       - name: Push Docker Image to Container Registry
-        run: |-
+        run: |
           export DOCKER_CONTENT_TRUST=1
           cat <<EOT >> ${{secrets.signer_key}}
           ${{ secrets.dct_signer_priv_key }}
@@ -183,4 +183,5 @@ jobs:
           docker context use default
           docker image prune -a -f
           docker rmi -f $(docker images -f "dangling=true" -q) || true
-          docker images
+      
+      - run: echo "::notice title=Remaining Docker Images::$(docker images)"
