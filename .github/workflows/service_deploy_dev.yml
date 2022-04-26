@@ -184,5 +184,3 @@ jobs:
           docker context use default
           docker image prune -a -f
           docker rmi -f $(docker images -f "dangling=true" -q) || true
-
-      - run: echo "::notice title=Remaining Docker Images::$(docker images)"
