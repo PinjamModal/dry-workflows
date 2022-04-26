@@ -180,7 +180,7 @@ jobs:
 
     steps:
       - name: Prune Images
-        run: |-
+        run: |
           docker context use default
           docker image prune -a -f
           docker rmi -f $(docker images -f "dangling=true" -q) || true
