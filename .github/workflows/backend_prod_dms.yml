@@ -52,7 +52,10 @@ jobs:
     runs-on: [self-hosted, dms-runner-1]
 
     steps:
-      - run: echo "::error title=Invalid branch::Branch is not production"
+      - run: |
+          
+          echo "::notice title=Current branch::${{ github.event.base_ref }}"
+          echo "::error title=Invalid branch::Branch is not production"
 
   code-scan:
     if: github.event.base_ref == 'refs/heads/production'
