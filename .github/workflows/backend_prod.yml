@@ -156,7 +156,7 @@ jobs:
           docker context use ${{ env.SWARM_CONTEXT }}
           echo "STACK=$(docker stack ls | grep -c ${{ inputs.service_name }}[[:space:]])" >> $GITHUB_ENV
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         if: ${{env.STACK == 0}}
         with:
           node-version: '12'

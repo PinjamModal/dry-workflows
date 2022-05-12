@@ -127,7 +127,7 @@ jobs:
       - name: Check stack
         run: echo "STACK=$(docker stack ls | grep -c ${{ env.SERVICE_NAME }}[[:space:]])" >> $GITHUB_ENV
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         if: env.STACK == 0
         with:
           node-version: '12'
