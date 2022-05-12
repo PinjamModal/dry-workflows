@@ -17,6 +17,7 @@ on:
       node_base_image:
         required: false
         type: string
+        default: pinjammodal/node:12.22.9-3.14
       compose_file:
         required: false
         type: string
