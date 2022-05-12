@@ -13,14 +13,9 @@ on:
       target_port:
         required: true
         type: number
-      tsc_base_image:
-        required: false
-        type: string
-        default: 'pinjammodal/typescript:3.9.10'
       node_base_image:
         required: false
         type: string
-        default: 'pinjammodal/node:12.22.9-3.14'
       compose_file:
         required: true
         type: string
@@ -95,7 +90,7 @@ jobs:
       - name: Build Docker
         run: |-
           docker context use default
-          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg TSC_BASE=${{ inputs.tsc_base_image }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.PROD_IMAGE_TAG }} .
+          docker build --build-arg TARGET_PORT=${{ inputs.target_port }} --build-arg NODE_BASE=${{ inputs.node_base_image }} -t ${{ env.PROD_IMAGE_TAG }} .
           docker images
 
       - name: Push Docker Image to Container Registry

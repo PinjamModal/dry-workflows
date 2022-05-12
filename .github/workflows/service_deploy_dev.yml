@@ -14,14 +14,9 @@ on:
         required: false
         type: number
         default: 3300
-      tsc_base_image:
-        required: false
-        type: string
-        default: 'pinjammodal/typescript:3.9.10'
       node_base_image:
         required: false
         type: string
-        default: 'pinjammodal/node:12.22.9-3.14'
       compose_file:
         required: false
         type: string
@@ -91,8 +86,6 @@ jobs:
           outputs: type=docker
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            TARGET_PORT=${{ inputs.target_port }}
-            TSC_BASE=${{ inputs.tsc_base_image }}
             NODE_BASE=${{ inputs.node_base_image }}
 
       - name: Check Build Result
