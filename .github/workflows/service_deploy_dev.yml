@@ -65,7 +65,8 @@ jobs:
         id: meta
         run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
 
-      - run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
+      - name: Notice meta
+        run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
 
       - name: Set Context Default
         run: docker context use default
@@ -92,7 +93,7 @@ jobs:
       - name: Check Build Result
         run: |
           docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
-          if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified:heavy_check_mark:::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
+          if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
 
       - name: Push Docker Image to Container Registry
         run: |
