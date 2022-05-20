@@ -14,8 +14,18 @@ on:
         required: true
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.runner.outputs.runner }}
+
+    steps:
+    - id: runner
+      run: echo "::set-output name=runner::{{ inputs.runner }}"
+
   netlify:
-    runs-on: [ self-hosted, "${{ inputs.runner }}" ]
+    needs: setup
+    runs-on: ${{ needs.build.outputs.runner }}
 
     steps:
       - name: Checkout code
