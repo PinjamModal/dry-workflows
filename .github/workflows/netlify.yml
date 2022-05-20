@@ -14,7 +14,7 @@ on:
         required: true
 
 jobs:
-  code-scan:
+  netlify:
     runs-on: [ self-hosted, "${{ inputs.runner }}" ]
 
     steps:
