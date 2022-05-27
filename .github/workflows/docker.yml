@@ -97,7 +97,7 @@ jobs:
           docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
 
   runner-cleanup:
-    needs: [swarm-deploy]
+    needs: [build]
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
