@@ -50,19 +50,24 @@ jobs:
           if [[${{endsWith(github.event.ref, 'prod')}}]]
           then
             echo "::set-output name=value::production"
+            echo "::notice title=NODE_ENV::production"
           else
             echo "::set-output name=value::development"
+            echo "::notice title=NODE_ENV::development"
           fi
       - id: composeFile
         run: |
-          if [[${{ inputs.compose_file }} == '']] && [[${{endsWith(github.event.ref, 'prod')}}]]
+          if [[ ${{ inputs.compose_file == ''}} ]] && [[${{endsWith(github.event.ref, 'prod')}}]]
           then
             echo "::set-output name=value::prod-stack"
-          elif [[${{ inputs.compose_file }} == '']] && [[${{endsWith(github.event.ref, 'dev')}}]]
+            echo "::notice title=composeFile::prod-stack"
+          elif [[ ${{ inputs.compose_file == ''}} ]] && [[${{endsWith(github.event.ref, 'dev')}}]]
           then
             echo "::set-output name=value::dev-stack"
+            echo "::notice title=composeFile::dev-stack"
           else
             echo "::set-output name=value::${{ inputs.compose_file }}"
+            echo "::notice title=composeFile::${{ inputs.compose_file }}"
           fi
 
   metadata:
