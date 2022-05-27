@@ -93,7 +93,7 @@ jobs:
           docker context use default
           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      - run: docker pull ${{ needs.build.outputs.imageTag }}
+      # - run: docker pull ${{ needs.build.outputs.imageTag }}
 
       - name: Run Snyk to check Docker image for vulnerabilities
         uses: snyk/actions/docker@master
