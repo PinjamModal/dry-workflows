@@ -7,9 +7,6 @@ on:
         description: 'Name of service/web app'
         required: false
         type: string
-      published_port:
-        required: true
-        type: number
       target_port:
         required: false
         type: number
