@@ -17,7 +17,6 @@ on:
       compose_file:
         required: false
         type: string
-        default: 'dev-stack'
       docker_context:
         required: true
         type: string
@@ -32,7 +31,6 @@ on:
         required: true
 
 env:
-  NODE_ENV: development
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
 
 jobs:
@@ -41,16 +39,28 @@ jobs:
     runs-on: [self-hosted, fit-runner-1]
 
     outputs:
-      NODE_ENV: ${{ steps.variable.outputs.NODE_ENV }}
+      nodeEnv: ${{ steps.nodeEnv.outputs.value }}
+      composeFile: ${{ steps.composeFile.outputs.value }}
 
     steps:
-      - id: variable
+      - id: nodeEnv
         run: |
           if [[${{endsWith(github.event.ref, 'prod')}}]]
           then
-            echo "::set-output name=NODE_ENV::production"
+            echo "::set-output name=value::production"
           else
-            echo "::set-output name=NODE_ENV::development"
+            echo "::set-output name=value::development"
+          fi
+      - id: composeFile
+        run: |
+          if [[${{ inputs.compose_file }} == '']] && [[${{endsWith(github.event.ref, 'prod')}}]]
+          then
+            echo "::set-output name=value::prod-stack"
+          elif [[${{ inputs.compose_file }} == '']] && [[${{endsWith(github.event.ref, 'dev')}}]]
+          then
+            echo "::set-output name=value::dev-stack"
+          else
+            echo "::set-output name=value::${{ inputs.compose_file }}"
           fi
 
   metadata:
@@ -141,7 +151,7 @@ jobs:
           {
             "service_name": "${{ env.SERVICE_NAME }}",
             "image": "${{ needs.build.outputs.imageTag }}",
-            "node_env": "${{ needs.define.outputs.NODE_ENV }}",
+            "node_env": "${{ needs.define.outputs.nodeEnv }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
           }
@@ -149,7 +159,7 @@ jobs:
 
       - name: Set Variable in Compose
         if: env.STACK == 0
-        run: mustache deployment/templates/config.json deployment/templates/${{ inputs.compose_file }}.mustache > deployment/${{ inputs.compose_file }}.yml
+        run: mustache deployment/templates/config.json deployment/templates/${{ needs.define.outputs.composeFile }}.mustache > deployment/${{ needs.define.outputs.composeFile }}.yml
 
       - name: Check Service Network
         if: env.STACK == 0
@@ -164,7 +174,7 @@ jobs:
 
       - name: Stack deploy
         if: env.STACK == 0
-        run: docker stack deploy --resolve-image=always --with-registry-auth --compose-file deployment/${{ inputs.compose_file }}.yml ${{ env.SERVICE_NAME }}
+        run: docker stack deploy --resolve-image=always --with-registry-auth --compose-file deployment/${{ needs.define.outputs.composeFile }}.yml ${{ env.SERVICE_NAME }}
 
       - name: Update current service
         if: env.STACK == 1
