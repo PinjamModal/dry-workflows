@@ -1,4 +1,4 @@
-name: Deploy Service/Web App to Development
+name: Deploy Service/Web App
 
 on:
   workflow_call:
@@ -14,10 +14,6 @@ on:
         required: false
         type: number
         default: 3300
-      node_base_image:
-        required: false
-        type: string
-        default: pinjammodal/node:12.22.9-3.14
       compose_file:
         required: false
         type: string
@@ -25,20 +21,14 @@ on:
       docker_context:
         required: true
         type: string
-      env_file:
-        description: 'Use to load environment variable from file'
+      strict_scan:
         required: false
-        type: string
+        type: boolean
+        default: true
     secrets:
       cr_username:
         required: true
       cr_token:
-        required: true
-      signer_key:
-        required: true
-      dct_signer_priv_key:
-        required: true
-      signer_pass:
         required: true
 
 env:
@@ -47,20 +37,29 @@ env:
 
 jobs:
 
-  build:
-    runs-on: [self-hosted]
+  define:
+    runs-on: [self-hosted, fit-runner-1]
+
+    outputs:
+      NODE_ENV: ${{ steps.variable.outputs.NODE_ENV }}
+
+    steps:
+      - id: variable
+        run: |
+          if [[${{endsWith(github.event.ref, 'prod')}}]]
+          then
+            echo "::set-output name=NODE_ENV::production"
+          else
+            echo "::set-output name=NODE_ENV::development"
+          fi
+
+  metadata:
+    runs-on: [self-hosted, fit-runner-1]
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
       - name: Docker Meta
         id: meta
         run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
@@ -68,51 +67,51 @@ jobs:
       - name: Notice meta
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
 
-      - name: Set Context Default
-        run: docker context use default
+  code-scan:
+    if: github.event.base_ref == 'refs/heads/production'
+    runs-on: [self-hosted, fit-runner-1]
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2.0.0
+    steps:
+      - uses: actions/checkout@master
+
+      - run: docker context use default
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: ${{ inputs.strict_scan }}
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          username: ${{ secrets.cr_username }} 
-          password: ${{ secrets.cr_token }}
+          args: --severity-threshold=high
+          command: test
 
-      - name: Load Environment Variable
-        if: inputs.env_file != ''
-        run: source ${{ inputs.env_file }}
+  container-scan:
+    if: github.event.base_ref == 'refs/heads/production'
+    needs: metadata
+    runs-on: [self-hosted, fit-runner-1]
+    
+    steps:
+      - run: docker context use default
 
-      - name: Build Docker
-        uses: docker/build-push-action@v3.0.0
+      - name: Login to Container Registry
+        run: |
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - run: docker pull ${{ needs.metadata.outputs.imageTag }}
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          context: .
-          outputs: type=docker
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            NODE_BASE=${{ inputs.node_base_image }}
-
-      - name: Check Build Result
-        run: |
-          docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
-          if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
-
-      - name: Push Docker Image to Container Registry
-        run: |
-          export DOCKER_CONTENT_TRUST=1
-          cat <<EOT >> ${{secrets.signer_key}}
-          ${{ secrets.dct_signer_priv_key }}
-          EOT
-          chmod 600 ${{secrets.signer_key}}
-          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
-          docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ steps.meta.outputs.tags }}
-          docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
-
-      - name: Cleanup Signer
-        run: rm ${{secrets.signer_key}}
+          image: ${{ needs.metadata.outputs.imageTag }}
+          args: --file=Dockerfile --severity-threshold=high
+          command: test
 
   swarm-deploy:
-    needs: build
-    runs-on: [self-hosted]
+    needs: [metadata, define]
+    runs-on: [self-hosted, fit-runner-1]
 
     steps:
       - name: Login to Docker Hub
@@ -142,7 +141,7 @@ jobs:
           {
             "service_name": "${{ env.SERVICE_NAME }}",
             "image": "${{ needs.build.outputs.imageTag }}",
-            "node_env": "${{ env.NODE_ENV }}",
+            "node_env": "${{ needs.define.outputs.NODE_ENV }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
           }
@@ -173,7 +172,7 @@ jobs:
 
   runner-cleanup:
     needs: [swarm-deploy]
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, fit-runner-1]
 
     steps:
       - name: Prune Images

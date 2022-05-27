@@ -1,0 +1,114 @@
+name: Build Docker Image
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: 'Name of service/web app'
+        required: false
+        type: string
+      published_port:
+        required: true
+        type: number
+      target_port:
+        required: false
+        type: number
+        default: 3300
+      node_base_image:
+        required: false
+        type: string
+        default: pinjammodal/node:12.22.9-3.14
+      env_file:
+        description: 'Use to load environment variable from file'
+        required: false
+        type: string
+    secrets:
+      cr_username:
+        required: true
+      cr_token:
+        required: true
+      signer_key:
+        required: true
+      dct_signer_priv_key:
+        required: true
+      signer_pass:
+        required: true
+
+env:
+  SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
+
+jobs:
+
+  build:
+    runs-on: [self-hosted, fit-runner-1]
+
+    outputs:
+      imageTag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Docker Meta
+        id: meta
+        run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
+
+      - name: Notice meta
+        run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
+
+      - name: Set Context Default
+        run: docker context use default
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2.0.0
+        with:
+          username: ${{ secrets.cr_username }} 
+          password: ${{ secrets.cr_token }}
+
+      - name: Load Environment Variable
+        if: inputs.env_file != ''
+        run: source ${{ inputs.env_file }}
+
+      - name: Build Docker
+        uses: docker/build-push-action@v3.0.0
+        with:
+          context: .
+          outputs: type=docker
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            NODE_BASE=${{ inputs.node_base_image }}
+
+      - name: Check Build Result
+        run: |
+          docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
+          if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
+
+      - name: Push Docker Image to Container Registry
+        run: |
+          export DOCKER_CONTENT_TRUST=1
+          cat <<EOT >> ${{secrets.signer_key}}
+          ${{ secrets.dct_signer_priv_key }}
+          EOT
+          chmod 600 ${{secrets.signer_key}}
+          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
+          docker trust key load ${{ secrets.signer_key }}
+          docker trust sign ${{ steps.meta.outputs.tags }}
+          docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
+
+  runner-cleanup:
+    needs: [swarm-deploy]
+    runs-on: [self-hosted, fit-runner-1]
+
+    steps:
+      - name: Cleanup Signer
+        run: rm ${{secrets.signer_key}}
+
+      - name: Prune Images
+        run: |
+          docker context use default
+          docker image prune -a -f
+          docker rmi -f $(docker images -f "dangling=true" -q) || true
