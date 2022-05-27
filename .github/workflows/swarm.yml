@@ -80,7 +80,6 @@ jobs:
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
 
   code-scan:
-    if: github.event.base_ref == 'refs/heads/production'
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
@@ -98,7 +97,7 @@ jobs:
           command: test
 
   swarm-deploy:
-    needs: [metadata, define, code-scan, container-scan]
+    needs: [metadata, define, code-scan]
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
