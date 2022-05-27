@@ -123,11 +123,11 @@ jobs:
           chmod 600 ${{secrets.signer_key}}
           export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
           docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ steps.meta.outputs.tags }}
-          docker trust inspect --pretty ${{ steps.meta.outputs.tags }}
+          docker trust sign ${{ needs.build.outputs.imageTag }}
+          docker trust inspect --pretty ${{ needs.build.outputs.imageTag }}
 
   runner-cleanup:
-    needs: [build]
+    needs: [push]
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
