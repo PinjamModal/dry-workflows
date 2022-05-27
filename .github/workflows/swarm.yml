@@ -29,6 +29,8 @@ on:
         required: true
       cr_token:
         required: true
+      snyk_token:
+        required: true
 
 env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
@@ -88,39 +90,15 @@ jobs:
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
-        continue-on-error: ${{ inputs.strict_scan }}
+        continue-on-error: ${{ github.event.inputs.strict_scan }}
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
           args: --severity-threshold=high
           command: test
 
-  container-scan:
-    if: github.event.base_ref == 'refs/heads/production'
-    needs: metadata
-    runs-on: [self-hosted, fit-runner-1]
-    
-    steps:
-      - run: docker context use default
-
-      - name: Login to Container Registry
-        run: |
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
-
-      - run: docker pull ${{ needs.metadata.outputs.imageTag }}
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          image: ${{ needs.metadata.outputs.imageTag }}
-          args: --file=Dockerfile --severity-threshold=high
-          command: test
-
   swarm-deploy:
-    needs: [metadata, define]
+    needs: [metadata, define, code-scan, container-scan]
     runs-on: [self-hosted, fit-runner-1]
 
     steps:

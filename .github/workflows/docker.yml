@@ -30,6 +30,8 @@ on:
         required: true
       signer_pass:
         required: true
+      snyk_token:
+        required: true
 
 env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
@@ -79,6 +81,34 @@ jobs:
           build-args: |
             NODE_BASE=${{ inputs.node_base_image }}
 
+  container-scan:
+    needs: build
+    runs-on: [self-hosted, fit-runner-1]
+    
+    steps:
+      - run: docker context use default
+
+      - name: Login to Container Registry
+        run: |
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
+      - run: docker pull ${{ needs.build.outputs.imageTag }}
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ needs.build.outputs.imageTag }}
+          args: --file=Dockerfile --severity-threshold=high
+          command: test
+
+  push:
+    needs: container-scan
+    runs-on: [self-hosted, fit-runner-1]
+
+    steps:
       - name: Check Build Result
         run: |
           docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
