@@ -47,7 +47,7 @@ jobs:
     steps:
       - id: nodeEnv
         run: |
-          if [[${{endsWith(github.event.ref, 'prod')}}]]
+          if ${{endsWith(github.event.ref, 'prod')}}
           then
             echo "::set-output name=value::production"
             echo "::notice title=NODE_ENV::production"
@@ -57,11 +57,11 @@ jobs:
           fi
       - id: composeFile
         run: |
-          if [[ ${{ inputs.compose_file == ''}} ]] && [[${{endsWith(github.event.ref, 'prod')}}]]
+          if ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'prod')}}
           then
             echo "::set-output name=value::prod-stack"
             echo "::notice title=composeFile::prod-stack"
-          elif [[ ${{ inputs.compose_file == ''}} ]] && [[${{endsWith(github.event.ref, 'dev')}}]]
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'dev')}}
           then
             echo "::set-output name=value::dev-stack"
             echo "::notice title=composeFile::dev-stack"
@@ -132,7 +132,7 @@ jobs:
           cat<<EOT >> deployment/templates/config.json
           {
             "service_name": "${{ env.SERVICE_NAME }}",
-            "image": "${{ needs.build.outputs.imageTag }}",
+            "image": "${{ needs.metadata.outputs.imageTag }}",
             "node_env": "${{ needs.define.outputs.nodeEnv }}",
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
@@ -160,7 +160,7 @@ jobs:
 
       - name: Update current service
         if: env.STACK == 1
-        run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.build.outputs.imageTag }} ${{ env.SERVICE_NAME }}_${{ env.SERVICE_NAME }}
+        run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.metadata.outputs.imageTag }} ${{ env.SERVICE_NAME }}_${{ env.SERVICE_NAME }}
 
   runner-cleanup:
     needs: [swarm-deploy]
