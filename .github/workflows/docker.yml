@@ -105,7 +105,7 @@ jobs:
           command: test
 
   push:
-    needs: container-scan
+    needs: [build, container-scan]
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
