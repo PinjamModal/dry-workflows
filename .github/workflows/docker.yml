@@ -21,7 +21,7 @@ on:
         type: string
       strict_scan:
         required: false
-        type: boolean
+        type: string
         default: true
     secrets:
       cr_username:
@@ -39,9 +39,29 @@ on:
 
 env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
+  STRICT_SCAN: ${{ inputs.strict_scan || false }}
 
 jobs:
+  define:
+    runs-on: [self-hosted, fit-runner-1]
+
+    outputs:
+      continueOnError: ${{ steps.strictScan.outputs.value }}
+
+    steps:
+      - id: strictScan
+        run: |
+          if ${{ inputs.strict_scan == ''}} || ${{ inputs.strict_scan == 'false'}}
+          then
+            echo "::set-output name=value::true"
+            echo "::notice title=strictScan::true"
+          else
+            echo "::set-output name=value::false"
+            echo "::notice title=strictScan::false"
+          fi
+
   code-scan:
+    needs: define
     runs-on: [self-hosted, fit-runner-1]
 
     steps:
@@ -51,7 +71,7 @@ jobs:
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
-        continue-on-error: ${{ github.event.inputs.strict_scan }}
+        continue-on-error: ${{ needs.define.outputs.continueOnError }}
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
