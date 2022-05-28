@@ -19,6 +19,10 @@ on:
         description: 'Use to load environment variable from file'
         required: false
         type: string
+      strict_scan:
+        required: false
+        type: boolean
+        default: true
     secrets:
       cr_username:
         required: true
@@ -37,8 +41,25 @@ env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
 
 jobs:
+  code-scan:
+    runs-on: [self-hosted, fit-runner-1]
+
+    steps:
+      - uses: actions/checkout@master
+
+      - run: docker context use default
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: ${{ github.event.inputs.strict_scan }}
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          args: --severity-threshold=high
+          command: test
 
   build:
+    needs: code-scan
     runs-on: [self-hosted, fit-runner-1]
 
     outputs:
