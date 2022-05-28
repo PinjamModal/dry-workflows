@@ -46,18 +46,18 @@ jobs:
     runs-on: [self-hosted, fit-runner-1]
 
     outputs:
-      continueOnError: ${{ steps.strictScan.outputs.value }}
+      continueOnError: ${{ steps.strictScan.outputs.continueOnError }}
 
     steps:
       - id: strictScan
         run: |
-          if ${{ inputs.strict_scan == ''}} || ${{ inputs.strict_scan == 'false'}}
+          if ${{ inputs.strict_scan == 'false'}}
           then
-            echo "::set-output name=value::true"
-            echo "::notice title=strictScan::true"
+            echo "::set-output name=continueOnError::true"
+            echo "::notice title=continueOnError::true"
           else
-            echo "::set-output name=value::false"
-            echo "::notice title=strictScan::false"
+            echo "::set-output name=continueOnError::false"
+            echo "::notice title=continueOnError::false"
           fi
 
   code-scan:
