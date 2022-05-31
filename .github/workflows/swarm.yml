@@ -68,8 +68,8 @@ jobs:
         run: |
           if ${{startsWith(inputs.docker_context, 'PM')}}
           then
-            echo "::set-output name=value::fit-runner-1)"
-            echo "::notice title=runner::fit-runner-1)"
+            echo "::set-output name=value::fit-runner-1"
+            echo "::notice title=runner::fit-runner-1"
           elif ${{startsWith(inputs.docker_context, 'DMS')}}
           then
             echo "::set-output name=value::dms-runner-1"
