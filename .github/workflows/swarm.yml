@@ -37,6 +37,7 @@ jobs:
     outputs:
       nodeEnv: ${{ steps.nodeEnv.outputs.value }}
       composeFile: ${{ steps.composeFile.outputs.value }}
+      runner: ${{ steps.runner.outputs.value }}
 
     steps:
       - id: nodeEnv
@@ -63,6 +64,17 @@ jobs:
             echo "::set-output name=value::${{ inputs.compose_file }}"
             echo "::notice title=composeFile::${{ inputs.compose_file }}"
           fi
+      - id: runner
+        run: |
+          if ${{startsWith(inputs.docker_context, 'PM')}}
+          then
+            echo "::set-output name=value::fit-runner-1)"
+            echo "::notice title=runner::fit-runner-1)"
+          elif ${{startsWith(inputs.docker_context, 'DMS')}}
+          then
+            echo "::set-output name=value::dms-runner-1"
+            echo "::notice title=runner::dms-runner-1"
+          fi
 
   metadata:
     runs-on: [self-hosted, fit-runner-1]
@@ -80,7 +92,7 @@ jobs:
 
   swarm-deploy:
     needs: [metadata, define]
-    runs-on: [self-hosted, fit-runner-1]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
 
     steps:
       - name: Login to Docker Hub
@@ -138,14 +150,3 @@ jobs:
       - name: Update current service
         if: env.STACK == 1
         run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.metadata.outputs.imageTag }} ${{ env.SERVICE_NAME }}_${{ env.SERVICE_NAME }}
-
-  runner-cleanup:
-    needs: [swarm-deploy]
-    runs-on: [self-hosted, fit-runner-1]
-
-    steps:
-      - name: Prune Images
-        run: |
-          docker context use default
-          docker image prune -a -f
-          docker rmi -f $(docker images -f "dangling=true" -q) || true
