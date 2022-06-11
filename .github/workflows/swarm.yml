@@ -96,7 +96,7 @@ jobs:
 
   swarm-deploy:
     needs: [metadata, define]
-    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
+    runs-on: [self-hosted]
 
     steps:
       - name: Login to Docker Hub
