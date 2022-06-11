@@ -61,8 +61,10 @@ jobs:
             echo "::set-output name=value::dev-stack"
             echo "::notice title=composeFile::dev-stack"
           else
-            echo "::set-output name=value::${{ inputs.compose_file }}"
-            echo "::notice title=composeFile::${{ inputs.compose_file }}"
+            # echo "::set-output name=value::${{ inputs.compose_file }}"
+            # echo "::notice title=composeFile::${{ inputs.compose_file }}"
+            echo "::set-output name=value::stack"
+            echo "::notice title=composeFile::stack"
           fi
       - id: runner
         run: |
