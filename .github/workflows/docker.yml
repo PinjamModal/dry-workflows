@@ -43,10 +43,11 @@ env:
 
 jobs:
   define:
-    runs-on: [self-hosted, fit-runner-1]
+    runs-on: ubuntu-latest
 
     outputs:
       continueOnError: ${{ steps.strictScan.outputs.continueOnError }}
+      runner: ${{ steps.runner.outputs.value }}
 
     steps:
       - id: strictScan
@@ -59,10 +60,21 @@ jobs:
             echo "::set-output name=continueOnError::${{ toJSON(false) }}"
             echo "::notice title=continueOnError::false"
           fi
+      - id: runner
+        run: |
+          if ${{startsWith(inputs.docker_context, 'PM')}}
+          then
+            echo "::set-output name=value::fit-runner-1"
+            echo "::notice title=runner::fit-runner-1"
+          elif ${{startsWith(inputs.docker_context, 'DMS')}}
+          then
+            echo "::set-output name=value::dms-runner-1"
+            echo "::notice title=runner::dms-runner-1"
+          fi
 
   code-scan:
     needs: define
-    runs-on: [self-hosted, fit-runner-1]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
 
     steps:
       - uses: actions/checkout@master
@@ -79,8 +91,8 @@ jobs:
           command: test
 
   build:
-    needs: code-scan
-    runs-on: [self-hosted, fit-runner-1]
+    needs: [define, code-scan]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
@@ -123,8 +135,8 @@ jobs:
             NODE_BASE=${{ inputs.node_base_image }}
 
   container-scan:
-    needs: build
-    runs-on: [self-hosted, fit-runner-1]
+    needs: [define, build]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
     
     steps:
       - run: docker context use default
@@ -146,8 +158,8 @@ jobs:
           command: test
 
   push:
-    needs: [build, container-scan]
-    runs-on: [self-hosted, fit-runner-1]
+    needs: [define, build, container-scan]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
 
     steps:
       - name: Check Build Result
@@ -168,8 +180,8 @@ jobs:
           docker trust inspect --pretty ${{ needs.build.outputs.imageTag }}
 
   runner-cleanup:
-    needs: [push]
-    runs-on: [self-hosted, fit-runner-1]
+    needs: [define, push]
+    runs-on: [self-hosted, '${{ needs.define.outputs.runner }}']
 
     steps:
       - name: Cleanup Signer
