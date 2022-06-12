@@ -168,16 +168,7 @@ jobs:
           if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
 
       - name: Push Docker Image to Container Registry
-        run: |
-          export DOCKER_CONTENT_TRUST=1
-          cat <<EOT >> ${{secrets.signer_key}}
-          ${{ secrets.dct_signer_priv_key }}
-          EOT
-          chmod 600 ${{secrets.signer_key}}
-          export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=${{ secrets.signer_pass }}
-          docker trust key load ${{ secrets.signer_key }}
-          docker trust sign ${{ needs.build.outputs.imageTag }}
-          docker trust inspect --pretty ${{ needs.build.outputs.imageTag }}
+        run: docker push ${{ needs.build.outputs.imageTag }}
 
   runner-cleanup:
     needs: [define, push]
