@@ -175,9 +175,6 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
-      - name: Cleanup Signer
-        run: rm ${{secrets.signer_key}}
-
       - name: Prune Images
         run: |
           docker context use default
