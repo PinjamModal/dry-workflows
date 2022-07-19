@@ -126,7 +126,7 @@ jobs:
         run: source ${{ inputs.env_file }}
 
       - name: Build Docker
-        uses: docker/build-push-action@v3.0.0
+        uses: docker/build-push-action@v3.1.0
         with:
           context: .
           outputs: type=docker
