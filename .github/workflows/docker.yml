@@ -148,14 +148,14 @@ jobs:
 
       # - run: docker pull ${{ needs.build.outputs.imageTag }}
 
-      # - name: Run Snyk to check Docker image for vulnerabilities
-      #   uses: snyk/actions/docker@master
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.snyk_token }}
-      #   with:
-      #     image: ${{ needs.build.outputs.imageTag }}
-      #     args: --file=Dockerfile --severity-threshold=high
-      #     command: test
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ needs.build.outputs.imageTag }}
+          args: --severity-threshold=high
+          command: test
 
   push:
     needs: [define, build, container-scan]
