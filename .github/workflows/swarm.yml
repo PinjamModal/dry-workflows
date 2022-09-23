@@ -46,6 +46,10 @@ jobs:
           then
             echo "::set-output name=value::production"
             echo "::notice title=NODE_ENV::production"
+          elif ${{endsWith(github.event.ref, 'demo')}}
+          then
+            echo "::set-output name=value::demo"
+            echo "::notice title=NODE_ENV::demo"
           else
             echo "::set-output name=value::development"
             echo "::notice title=NODE_ENV::development"
@@ -60,6 +64,10 @@ jobs:
           then
             echo "::set-output name=value::dev-stack"
             echo "::notice title=composeFile::dev-stack"
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'demo')}}
+          then
+            echo "::set-output name=value::demo-stack"
+            echo "::notice title=composeFile::demo-stack"
           else
             # echo "::set-output name=value::${{ inputs.compose_file }}"
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
