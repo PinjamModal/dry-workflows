@@ -174,7 +174,8 @@ jobs:
         run: docker push ${{ needs.build.outputs.imageTag }}
 
   runner-cleanup:
-    needs: [define, push]
+    if: ${{ always() }}
+    needs: [build, push]
     runs-on: [self-hosted]
 
     steps:
