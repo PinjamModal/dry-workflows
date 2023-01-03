@@ -160,6 +160,11 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
+      - name: Login to Container Registry
+        run: |
+          docker context use default
+          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+
       - name: Check Build Result
         run: |
           docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
