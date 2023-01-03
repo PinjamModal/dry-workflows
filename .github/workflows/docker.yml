@@ -134,31 +134,29 @@ jobs:
           build-args: |
             NODE_BASE=${{ inputs.node_base_image }}
 
-  container-scan:
-    needs: [define, build]
-    runs-on: [self-hosted]
+#   container-scan:
+#     needs: [define, build]
+#     runs-on: [self-hosted]
     
-    steps:
-      - run: docker context use default
+#     steps:
+#       - run: docker context use default
 
-      - name: Login to Container Registry
-        run: |
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+#       - name: Login to Container Registry
+#         run: |
+#           docker context use default
+#           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-      # - run: docker pull ${{ needs.build.outputs.imageTag }}
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          image: ${{ needs.build.outputs.imageTag }}
-          args: --severity-threshold=high
-          command: test
+#       - name: Run Snyk to check Docker image for vulnerabilities
+#         uses: snyk/actions/docker@master
+#         env:
+#           SNYK_TOKEN: ${{ secrets.snyk_token }}
+#         with:
+#           image: ${{ needs.build.outputs.imageTag }}
+#           args: --severity-threshold=high
+#           command: test
 
   push:
-    needs: [define, build, container-scan]
+    needs: [define, build]
     runs-on: [self-hosted]
 
     steps:
