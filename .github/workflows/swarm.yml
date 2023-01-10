@@ -44,45 +44,53 @@ jobs:
         run: |
           if ${{endsWith(github.event.ref, 'prod')}}
           then
-            echo "::set-output name=value::production"
+            echo "value=production" >> $GITHUB_OUTPUT
             echo "::notice title=NODE_ENV::production"
           elif ${{endsWith(github.event.ref, 'demo')}}
           then
-            echo "::set-output name=value::demo"
+            echo "value=demo" >> $GITHUB_OUTPUT
             echo "::notice title=NODE_ENV::demo"
+          elif ${{endsWith(github.event.ref, 'staging')}}
+          then
+            echo "value=staging" >> $GITHUB_OUTPUT
+            echo "::notice title=NODE_ENV::staging"
           else
-            echo "::set-output name=value::development"
+            echo "value=development" >> $GITHUB_OUTPUT
             echo "::notice title=NODE_ENV::development"
           fi
       - id: composeFile
         run: |
           if ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'prod')}}
           then
-            echo "::set-output name=value::prod-stack"
+            echo "value=prod-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::prod-stack"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'dev')}}
           then
-            echo "::set-output name=value::dev-stack"
+            echo "value=dev-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::dev-stack"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'demo')}}
           then
-            echo "::set-output name=value::demo-stack"
+            echo "value=demo-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::demo-stack"
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
+          then
+            echo "value=staging-stack" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::staging-stack"
           else
-            # echo "::set-output name=value::${{ inputs.compose_file }}"
+            # echo "value=${{ inputs.compose_file }}" >> $GITHUB_OUTPUT
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
-            echo "::set-output name=value::stack"
+            echo "value=stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::stack"
           fi
       - id: runner
         run: |
           if ${{startsWith(inputs.docker_context, 'PM')}}
           then
-            echo "::set-output name=value::fit-runner-1"
+            echo "value=fit-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::fit-runner-1"
           elif ${{startsWith(inputs.docker_context, 'DMS')}}
           then
-            echo "::set-output name=value::dms-runner-1"
+            echo "value=dms-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::dms-runner-1"
           fi
       - name: Check Branch
@@ -97,7 +105,7 @@ jobs:
     steps:
       - name: Docker Meta
         id: meta
-        run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
+        run: echo "tags=pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT 
 
       - name: Notice Meta
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
