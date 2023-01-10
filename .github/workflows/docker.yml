@@ -74,7 +74,7 @@ jobs:
 
   code-scan:
     needs: define
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -90,9 +90,9 @@ jobs:
           args: --severity-threshold=high
           command: test
 
-  build:
+  build-scan-push:
     needs: [define, code-scan]
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
@@ -116,7 +116,7 @@ jobs:
         run: docker context use default
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2.0.0
+        uses: docker/login-action@v2.1.0
         with:
           username: ${{ secrets.cr_username }} 
           password: ${{ secrets.cr_token }}
@@ -126,57 +126,38 @@ jobs:
         run: source ${{ inputs.env_file }}
 
       - name: Build Docker
-        uses: docker/build-push-action@v3.1.1
+        uses: docker/build-push-action@v3.2.0
         with:
           context: .
           outputs: type=docker
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             NODE_BASE=${{ inputs.node_base_image }}
-
-  container-scan:
-    needs: [define, build]
-    runs-on: [self-hosted]
     
-    steps:
       - run: docker context use default
 
       - name: Login to Container Registry
-        run: |
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
-
-      # - run: docker pull ${{ needs.build.outputs.imageTag }}
+        run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
       - name: Run Snyk to check Docker image for vulnerabilities
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.snyk_token }}
         with:
-          image: ${{ needs.build.outputs.imageTag }}
+          image: ${{ steps.meta.outputs.tags }}
           args: --severity-threshold=high
           command: test
 
-  push:
-    needs: [define, build, container-scan]
-    runs-on: [self-hosted]
-
-    steps:
       - name: Check Build Result
         run: |
           docker images | grep ${{ env.SERVICE_NAME }} > tmp_docker
           if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
 
       - name: Push Docker Image to Container Registry
-        run: docker push ${{ needs.build.outputs.imageTag }}
+        run: docker push ${{ steps.meta.outputs.tags }}
 
-  runner-cleanup:
-    needs: [define, push]
-    runs-on: [self-hosted]
-
-    steps:
-      - name: Prune Images
+      - name: runner image cleanup
         run: |
           docker context use default
-          docker image prune -a -f
+          docker image prune -f ${{ steps.meta.outputs.tags }}
           docker rmi -f $(docker images -f "dangling=true" -q) || true
