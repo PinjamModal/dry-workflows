@@ -54,21 +54,21 @@ jobs:
         run: |
           if ${{ inputs.strict_scan == 'false'}}
           then
-            echo "::set-output name=continueOnError::${{ toJSON(true) }}"
+            echo "continueOnError=${{ toJSON(true) }}" >> $GITHUB_OUTPUT
             echo "::notice title=continueOnError::true"
           else
-            echo "::set-output name=continueOnError::${{ toJSON(false) }}"
+            echo "continueOnError=${{ toJSON(false) }}" >> $GITHUB_OUTPUT
             echo "::notice title=continueOnError::false"
           fi
       - id: runner
         run: |
           if ${{startsWith(inputs.docker_context, 'PM')}}
           then
-            echo "::set-output name=value::fit-runner-1"
+            echo "value=fit-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::fit-runner-1"
           elif ${{startsWith(inputs.docker_context, 'DMS')}}
           then
-            echo "::set-output name=value::dms-runner-1"
+            echo "value=dms-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::dms-runner-1"
           fi
 
@@ -107,7 +107,7 @@ jobs:
 
       - name: Docker Meta
         id: meta
-        run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
+        run: echo "tags=pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
 
       - name: Notice meta
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
