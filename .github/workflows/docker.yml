@@ -54,27 +54,27 @@ jobs:
         run: |
           if ${{ inputs.strict_scan == 'false'}}
           then
-            echo "::set-output name=continueOnError::${{ toJSON(true) }}"
+            echo "continueOnError=${{ toJSON(true) }}" >> $GITHUB_OUTPUT
             echo "::notice title=continueOnError::true"
           else
-            echo "::set-output name=continueOnError::${{ toJSON(false) }}"
+            echo "continueOnError=${{ toJSON(false) }}" >> $GITHUB_OUTPUT
             echo "::notice title=continueOnError::false"
           fi
       - id: runner
         run: |
           if ${{startsWith(inputs.docker_context, 'PM')}}
           then
-            echo "::set-output name=value::fit-runner-1"
+            echo "value=fit-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::fit-runner-1"
           elif ${{startsWith(inputs.docker_context, 'DMS')}}
           then
-            echo "::set-output name=value::dms-runner-1"
+            echo "value=dms-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::dms-runner-1"
           fi
 
   code-scan:
     needs: define
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -90,9 +90,9 @@ jobs:
           args: --severity-threshold=high
           command: test
 
-  build:
+  build-scan-push:
     needs: [define, code-scan]
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
@@ -107,7 +107,7 @@ jobs:
 
       - name: Docker Meta
         id: meta
-        run: echo "::set-output name=tags::pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" 
+        run: echo "tags=pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
 
       - name: Notice meta
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
@@ -116,7 +116,7 @@ jobs:
         run: docker context use default
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2.0.0
+        uses: docker/login-action@v2.1.0
         with:
           username: ${{ secrets.cr_username }} 
           password: ${{ secrets.cr_token }}
@@ -126,44 +126,27 @@ jobs:
         run: source ${{ inputs.env_file }}
 
       - name: Build Docker
-        uses: docker/build-push-action@v3.1.1
+        uses: docker/build-push-action@v3.2.0
         with:
           context: .
           outputs: type=docker
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             NODE_BASE=${{ inputs.node_base_image }}
-
-#   container-scan:
-#     needs: [define, build]
-#     runs-on: [self-hosted]
     
-#     steps:
-#       - run: docker context use default
+      - run: docker context use default
 
-#       - name: Login to Container Registry
-#         run: |
-#           docker context use default
-#           docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
+      - name: Login to Container Registry
+        run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
 #       - name: Run Snyk to check Docker image for vulnerabilities
 #         uses: snyk/actions/docker@master
 #         env:
 #           SNYK_TOKEN: ${{ secrets.snyk_token }}
 #         with:
-#           image: ${{ needs.build.outputs.imageTag }}
+#           image: ${{ steps.meta.outputs.tags }}
 #           args: --severity-threshold=high
 #           command: test
-
-  push:
-    needs: [define, build]
-    runs-on: [self-hosted]
-
-    steps:
-      - name: Login to Container Registry
-        run: |
-          docker context use default
-          docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
       - name: Check Build Result
         run: |
@@ -171,16 +154,10 @@ jobs:
           if grep -wq ${GITHUB_REF#refs/*/} tmp_docker; then echo "::notice title=image build verified::${{ steps.meta.outputs.tags }} image found" ; else echo "::error title=build error::${{ steps.meta.outputs.tags }} not found"; fi
 
       - name: Push Docker Image to Container Registry
-        run: docker push ${{ needs.build.outputs.imageTag }}
+        run: docker push ${{ steps.meta.outputs.tags }}
 
-  runner-cleanup:
-    if: ${{ always() }}
-    needs: [build, push]
-    runs-on: [self-hosted]
-
-    steps:
-      - name: Prune Images
+      - name: runner image cleanup
         run: |
           docker context use default
-          docker image prune -a -f
+          docker image rm -f ${{ steps.meta.outputs.tags }}
           docker rmi -f $(docker images -f "dangling=true" -q) || true
