@@ -138,7 +138,7 @@ jobs:
       - name: Set template variable
         if: env.STACK == 0
         run: |
-          cat<<EOT >> deployment/templates/config.json
+          cat<<EOT > deployment/templates/config.json
           {
             "service_name": "${{ env.SERVICE_NAME }}",
             "image": "${{ needs.metadata.outputs.imageTag }}",
