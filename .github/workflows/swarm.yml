@@ -148,6 +148,9 @@ jobs:
           }
           EOT
 
+      - name: debug config.json for mustache
+        run: cat deployment/templates/config.json
+
       - name: Set Variable in Compose
         if: env.STACK == 0
         run: mustache deployment/templates/config.json deployment/templates/${{ needs.define.outputs.composeFile }}.mustache > deployment/${{ needs.define.outputs.composeFile }}.yml
