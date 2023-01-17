@@ -149,6 +149,7 @@ jobs:
           EOT
 
       - name: debug config.json for mustache
+        if: env.STACK == 0
         run: cat deployment/templates/config.json
 
       - name: Set Variable in Compose
