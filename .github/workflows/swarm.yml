@@ -115,6 +115,8 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
+      - uses: actions/checkout@v3
+      
       - name: Login to Docker Hub
         uses: docker/login-action@v2.0.0
         with:
@@ -149,6 +151,7 @@ jobs:
           EOT
 
       - name: debug config.json for mustache
+        if: env.STACK == 0
         run: cat deployment/templates/config.json
 
       - name: Set Variable in Compose
