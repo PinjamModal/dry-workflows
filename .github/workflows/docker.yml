@@ -139,14 +139,15 @@ jobs:
       - name: Login to Container Registry
         run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
 
-#       - name: Run Snyk to check Docker image for vulnerabilities
-#         uses: snyk/actions/docker@master
-#         env:
-#           SNYK_TOKEN: ${{ secrets.snyk_token }}
-#         with:
-#           image: ${{ steps.meta.outputs.tags }}
-#           args: --severity-threshold=high
-#           command: test
+      - name: Run Snyk to check Docker image for vulnerabilities
+        uses: snyk/actions/docker@master
+        continue-on-error: ${{ fromJSON(needs.define.outputs.continueOnError) }}
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+          args: --severity-threshold=high
+          command: test
 
       - name: Check Build Result
         run: |
