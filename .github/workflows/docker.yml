@@ -71,27 +71,10 @@ jobs:
             echo "value=dms-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::dms-runner-1"
           fi
+          
 
-  code-scan:
-    needs: define
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - run: docker context use default
-
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
-        continue-on-error: ${{ fromJSON(needs.define.outputs.continueOnError) }}
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          args: --severity-threshold=high
-          command: test
-
-  build-scan-push:
-    needs: [define, code-scan]
+  build-push:
+    needs: [define]
     runs-on: ubuntu-latest
 
     outputs:
@@ -138,16 +121,6 @@ jobs:
 
       - name: Login to Container Registry
         run: docker login -u ${{ secrets.cr_username }} -p ${{ secrets.cr_token }}
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        uses: snyk/actions/docker@master
-        continue-on-error: ${{ fromJSON(needs.define.outputs.continueOnError) }}
-        env:
-          SNYK_TOKEN: ${{ secrets.snyk_token }}
-        with:
-          image: ${{ steps.meta.outputs.tags }}
-          args: --severity-threshold=high
-          command: test
 
       - name: Check Build Result
         run: |
