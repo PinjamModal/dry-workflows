@@ -63,19 +63,19 @@ jobs:
           if ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'prod')}}
           then
             echo "value=prod-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::prod-stack"
+            echo "::notice title=composeFile::values-prod.yaml"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'dev')}}
           then
             echo "value=dev-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::dev-stack"
+            echo "::notice title=composeFile::values-dev.yaml"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'demo')}}
           then
             echo "value=demo-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::demo-stack"
+            echo "::notice title=composeFile::values-demo.yaml"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
           then
             echo "value=staging-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::staging-stack"
+            echo "::notice title=composeFile::values-staging.yaml"
           else
             # echo "value=${{ inputs.compose_file }}" >> $GITHUB_OUTPUT
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
@@ -126,9 +126,6 @@ jobs:
       - name: Set Context
         run: docker context use ${{ inputs.docker_context }}
 
-      - name: Check stack
-        run: echo "STACK=$(docker stack ls | grep -c ${{ env.SERVICE_NAME }}[[:space:]])" >> $GITHUB_ENV
-
       - uses: actions/setup-node@v3
         if: env.STACK == 0
         with:
@@ -148,31 +145,13 @@ jobs:
             "target_port": "${{ inputs.target_port }}",
             "published_port": "${{ inputs.published_port }}"
           }
-          EOT
+          EOT   
 
-      - name: debug config.json for mustache
-        if: env.STACK == 0
-        run: cat deployment/templates/config.json
-
-      - name: Set Variable in Compose
-        if: env.STACK == 0
-        run: mustache deployment/templates/config.json deployment/templates/${{ needs.define.outputs.composeFile }}.mustache > deployment/${{ needs.define.outputs.composeFile }}.yml
-
-      - name: Check Service Network
-        if: env.STACK == 0
-        id: network
-        run: |
-          docker network ls > tmp
-          if grep -wq public tmp; then echo "::notice title=network exist::public network already exist" ; else echo "create=true" >> $GITHUB_OUTPUT; fi
-
-      - name: Create Service Network
-        if: steps.network.outputs.create
-        run: docker network create -d overlay --attachable public
-
-      - name: Stack deploy
-        if: env.STACK == 0
-        run: docker stack deploy --resolve-image=always --with-registry-auth --compose-file deployment/${{ needs.define.outputs.composeFile }}.yml ${{ env.SERVICE_NAME }}
-
-      - name: Update current service
-        if: env.STACK == 1
-        run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.metadata.outputs.imageTag }} ${{ env.SERVICE_NAME }}_${{ env.SERVICE_NAME }}
+      - name: Helm deploy
+        uses: tale/kubectl-action@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_FLEXY }}
+      - run: |
+            kubectl config use-context STAGING
+            kubectl get ns
+            helm upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }} -n ${args.name_space} --create-namespace --set image.tag=${{ needs.metadata.outputs.imageTag }}
