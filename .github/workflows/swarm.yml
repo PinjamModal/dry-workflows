@@ -67,6 +67,10 @@ jobs:
           then
             echo "value=staging-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-staging.yaml"
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
+          then
+            echo "value=staging-stack" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values.yaml"
           else
             # echo "value=${{ inputs.compose_file }}" >> $GITHUB_OUTPUT
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
@@ -120,4 +124,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f values.yaml -n ${{ inputs.namespace }} --set image.tag=${{ needs.metadata.outputs.imageTag }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }} -n ${{ inputs.namespace }} --set image.tag=${{ needs.metadata.outputs.imageTag }}
