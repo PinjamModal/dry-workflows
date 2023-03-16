@@ -13,9 +13,6 @@ on:
       tag:
         required: true
         type: string
-      namespace:
-        required: true
-        type: string
     secrets:
       kube_config:
         required: true
