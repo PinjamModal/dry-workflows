@@ -10,6 +10,9 @@ on:
       docker_context:
         required: true
         type: string
+    secrets:
+      kube_config:
+        required: true
 
 env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
@@ -105,7 +108,7 @@ jobs:
       - name: Helm deploy
         uses: tale/kubectl-action@v1
         with:
-          base64-kube-config: ${{ secrets.KUBE_AC_CONFIG }}
+          base64-kube-config: ${{ secrets.kube_config }}
       - run: |
             kubectl config use-context ${{ inputs.docker_context }}
             kubectl get ns
