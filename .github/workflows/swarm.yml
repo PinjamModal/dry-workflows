@@ -127,4 +127,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --set image.tag=${{ inputs.tag }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --image ${{ needs.metadata.outputs.imageTag }}
