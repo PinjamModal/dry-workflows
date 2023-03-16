@@ -10,6 +10,9 @@ on:
       docker_context:
         required: true
         type: string
+      tag:
+        required: true
+        type: string
       namespace:
         required: true
         type: string
@@ -19,7 +22,6 @@ on:
 
 env:
   SERVICE_NAME: ${{ inputs.service_name || github.event.repository.name  }}
-  TAG: ${GITHUB_REF#refs/*/}
 
 jobs:
 
@@ -125,4 +127,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --set image.tag=${{ env.TAG }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --set image.tag=${{ inputs.tag }}
