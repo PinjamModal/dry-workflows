@@ -67,7 +67,7 @@ jobs:
           then
             echo "value=staging-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-staging.yaml"
-          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'kubernetes')}}
           then
             echo "value=staging-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values.yaml"
