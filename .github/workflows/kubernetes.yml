@@ -7,7 +7,7 @@ on:
         description: 'Name of service/web app'
         required: false
         type: string
-      docker_context:
+      kube_context:
         required: true
         type: string
     secrets:
@@ -84,7 +84,7 @@ jobs:
           then
             echo "value=fit-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::fit-runner-1"
-          elif ${{startsWith(inputs.docker_context, 'STAGING')}}
+          elif ${{startsWith(inputs.docker_context, 'DMS')}}
           then
             echo "value=dms-runner-1" >> $GITHUB_OUTPUT
             echo "::notice title=runner::dms-runner-1"
@@ -123,7 +123,7 @@ jobs:
         with:
           base64-kube-config: ${{ secrets.kube_config }}
       - run: |
-            kubectl config use-context ${{ inputs.docker_context }}
+            kubectl config use-context ${{ inputs.kube_context }}
             kubectl get ns
             ls
       - name: Install release
