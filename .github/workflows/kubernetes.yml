@@ -29,28 +29,32 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      nodeEnv: ${{ steps.nodeEnv.outputs.value }}
+      namespace: ${{ steps.namespace.outputs.value }}
       composeFile: ${{ steps.composeFile.outputs.value }}
       runner: ${{ steps.runner.outputs.value }}
 
     steps:
-      - id: nodeEnv
+      - id: namespace
         run: |
           if ${{endsWith(github.event.ref, 'prod')}}
           then
             echo "value=production" >> $GITHUB_OUTPUT
-            echo "::notice title=NODE_ENV::production"
+            echo "::notice title=namespace::production"
           elif ${{endsWith(github.event.ref, 'demo')}}
           then
             echo "value=demo" >> $GITHUB_OUTPUT
-            echo "::notice title=NODE_ENV::demo"
+            echo "::notice title=namespace::demo"
           elif ${{endsWith(github.event.ref, 'staging')}}
           then
             echo "value=staging" >> $GITHUB_OUTPUT
-            echo "::notice title=NODE_ENV::staging"
+            echo "::notice title=namespace::staging"
+          elif ${{endsWith(github.event.ref, 'kubernetes')}}
+          then
+            echo "value=kubernetes" >> $GITHUB_OUTPUT
+            echo "::notice title=namespace::kubernetes"
           else
             echo "value=development" >> $GITHUB_OUTPUT
-            echo "::notice title=NODE_ENV::development"
+            echo "::notice title=namespace::development"
           fi
       - id: composeFile
         run: |
@@ -132,4 +136,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --set image.tag=${{ needs.metadata.outputs.releaseTag }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ needs.define.outputs.namespace }} --create-namespace --set image.tag=${{ needs.metadata.outputs.releaseTag }}
