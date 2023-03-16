@@ -54,19 +54,19 @@ jobs:
         run: |
           if ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'prod')}}
           then
-            echo "value=prod-values" >> $GITHUB_OUTPUT
+            echo "value=values-prod" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-prod"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'dev')}}
           then
-            echo "value=dev-values" >> $GITHUB_OUTPUT
+            echo "value=values-dev" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-dev"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'demo')}}
           then
-            echo "value=demo-values" >> $GITHUB_OUTPUT
+            echo "value=values-demo" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-demo"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
           then
-            echo "value=staging-values" >> $GITHUB_OUTPUT
+            echo "value=values-staging" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::values-staging"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'kubernetes')}}
           then
