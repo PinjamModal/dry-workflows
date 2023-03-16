@@ -53,24 +53,24 @@ jobs:
         run: |
           if ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'prod')}}
           then
-            echo "value=prod-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::values-prod.yaml"
+            echo "value=prod-values" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values-prod"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'dev')}}
           then
-            echo "value=dev-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::values-dev.yaml"
+            echo "value=dev-values" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values-dev"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'demo')}}
           then
-            echo "value=demo-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::values-demo.yaml"
+            echo "value=demo-values" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values-demo"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'staging')}}
           then
-            echo "value=staging-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::values-staging.yaml"
+            echo "value=staging-values" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values-staging"
           elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'kubernetes')}}
           then
-            echo "value=staging-stack" >> $GITHUB_OUTPUT
-            echo "::notice title=composeFile::values.yaml"
+            echo "value=values" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::values"
           else
             # echo "value=${{ inputs.compose_file }}" >> $GITHUB_OUTPUT
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
@@ -124,4 +124,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }} -n ${{ inputs.namespace }} --set image.tag=${{ needs.metadata.outputs.imageTag }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --set image.tag=${{ needs.metadata.outputs.imageTag }}
