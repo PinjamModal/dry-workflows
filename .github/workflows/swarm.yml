@@ -113,3 +113,7 @@ jobs:
             kubectl config use-context ${{ inputs.docker_context }}
             kubectl get ns
             ls
+      - name: Install release
+        uses: hiberbee/github-action-helm@latest
+        with:
+          helm: helm upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f values.yaml -n sample
