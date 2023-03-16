@@ -99,11 +99,16 @@ jobs:
 
     outputs:
       imageTag: ${{ steps.meta.outputs.tags }}
+      releaseTag: ${{ steps.release_tag.outputs.release }}
 
     steps:
       - name: Docker Meta
         id: meta
-        run: echo "tags=pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT 
+        run: echo "tags=pinjammodal/${{ env.SERVICE_NAME }}:${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      
+      - name: Get release Tag
+        id: release_tag
+        run: echo "release=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
 
       - name: Notice Meta
         run: echo "::notice title=meta tag created::${{ steps.meta.outputs.tags }}"
@@ -127,4 +132,4 @@ jobs:
         uses: hiberbee/github-action-helm@latest
         with:
           run: ls
-          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }} --image ${{ needs.metadata.outputs.imageTag }}
+          helm: upgrade ${{ env.SERVICE_NAME }} --install Charts/${{ env.SERVICE_NAME }} -f ${{ needs.define.outputs.composeFile }}.yaml -n ${{ inputs.namespace }}  --set image.tag=${{ needs.metadata.outputs.releaseTag }}
