@@ -54,6 +54,10 @@ jobs:
           then
             echo "value=staging" >> $GITHUB_OUTPUT
             echo "::notice title=NODE_ENV::staging"
+          elif ${{endsWith(github.event.ref, 'release')}}
+          then
+            echo "value=release" >> $GITHUB_OUTPUT
+            echo "::notice title=NODE_ENV::release"
           else
             echo "value=development" >> $GITHUB_OUTPUT
             echo "::notice title=NODE_ENV::development"
@@ -76,6 +80,10 @@ jobs:
           then
             echo "value=staging-stack" >> $GITHUB_OUTPUT
             echo "::notice title=composeFile::staging-stack"
+          elif ${{ inputs.compose_file == ''}} && ${{endsWith(github.event.ref, 'release')}}
+          then
+            echo "value=release-stack" >> $GITHUB_OUTPUT
+            echo "::notice title=composeFile::release-stack"
           else
             # echo "value=${{ inputs.compose_file }}" >> $GITHUB_OUTPUT
             # echo "::notice title=composeFile::${{ inputs.compose_file }}"
