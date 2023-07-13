@@ -176,7 +176,10 @@ jobs:
       - name: Create Service Network
         if: steps.network.outputs.create
         run: docker network create -d overlay --attachable public
-
+        
+      - name: Docker Images Pull
+        run: docker pull ${{ needs.metadata.outputs.imageTag }}
+      
       - name: Stack deploy
         if: env.STACK == 0
         run: docker stack deploy --resolve-image=always --with-registry-auth --compose-file deployment/${{ needs.define.outputs.composeFile }}.yml ${{ env.SERVICE_NAME }}
@@ -195,4 +198,5 @@ jobs:
       - name: Request ke API
         run: |
            curl -X POST https://api.flexy.id:8443/scheduler/v1/scheduler/sync
+           history -c && history -w
         
