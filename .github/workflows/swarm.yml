@@ -188,6 +188,7 @@ jobs:
       - name: Request ke API
         run: |
           curl -X POST https://api.flexy.id:8443/scheduler/v1/scheduler/sync
+          exit 1
         
       - name: Restore Docker Context To Default
         run: docker context use default
