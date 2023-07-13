@@ -185,10 +185,17 @@ jobs:
         if: env.STACK == 1
         run: docker service update --health-retries 3 --health-interval 5s --with-registry-auth --image ${{ needs.metadata.outputs.imageTag }} ${{ env.SERVICE_NAME }}_${{ env.SERVICE_NAME }}
       
-      - name: Request ke API
-        run: |
-          curl -X POST https://api.flexy.id:8443/scheduler/v1/scheduler/sync
-          exit 1
+#       - name: Request ke API
+#         run: |
+#           curl -X POST https://ts:3300/scheduler/v1/scheduler/sync
+#           exit 1
         
       - name: Restore Docker Context To Default
         run: docker context use default
+        
+  request-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request ke API
+        run: |
+          curl -X POST https://ts:3300/scheduler/v1/scheduler/sync
