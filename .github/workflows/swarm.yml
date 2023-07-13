@@ -187,7 +187,7 @@ jobs:
       
       - name: Request ke API
         run: |
-           curl -X POST https://ts-cron-scheduler:3300/scheduler/v1/scheduler/sync
+           curl -X POST https://172.16.0.43:11515/scheduler/v1/scheduler/sync
      
       - name: Restore Docker Context To Default
         run: docker context use default
